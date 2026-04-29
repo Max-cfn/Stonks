@@ -13,6 +13,7 @@ Setup : `pnpm add -wD gitnexus@latest && node_modules/.bin/gitnexus analyze .`
 """
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -40,6 +41,12 @@ def _run_gitnexus(args: list[str], timeout: int = 600) -> str:
     """Lance le CLI gitnexus avec args, capture stdout/stderr."""
     s = get_settings()
     cmd = [_gitnexus_bin(), *args]
+
+    # Forcer GITNEXUS_HOME dans le repo car /home est ro sur serveurmax
+    env = os.environ.copy()
+    gitnexus_home = str(s.repo_root / ".gitnexus")
+    env.setdefault("GITNEXUS_HOME", gitnexus_home)
+
     try:
         proc = subprocess.run(
             cmd,
@@ -48,6 +55,7 @@ def _run_gitnexus(args: list[str], timeout: int = 600) -> str:
             text=True,
             timeout=timeout,
             check=False,
+            env=env,
         )
     except FileNotFoundError:
         return (

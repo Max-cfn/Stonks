@@ -1,0 +1,88 @@
+[project]
+name = "stonks-agents-core"
+version = "0.1.0"
+description = "Flotte d'agents IA pilotant le développement et la maintenance de Stonks"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Max-cfn" }]
+license = { text = "Proprietary" }
+
+dependencies = [
+  # ─── LLM orchestration ─────────────────────────────────────
+  "langgraph>=0.2.50",
+  "langchain>=0.3.10",
+  "langchain-openai>=0.2.10",      # OpenRouter parle OpenAI-compatible
+  "langchain-community>=0.3.10",
+  "openai>=1.55.0",
+  "tiktoken>=0.8.0",
+  # ─── Pydantic & config ─────────────────────────────────────
+  "pydantic>=2.9.0",
+  "pydantic-settings>=2.6.0",
+  "python-dotenv>=1.0.1",
+  # ─── Logging & observabilité ───────────────────────────────
+  "structlog>=24.4.0",
+  "rich>=13.9.0",
+  "loguru>=0.7.2",
+  # ─── Outils natifs ─────────────────────────────────────────
+  "GitPython>=3.1.43",
+  "PyGithub>=2.5.0",
+  "watchfiles>=0.24.0",
+  # ─── Persistance / queue ───────────────────────────────────
+  "redis>=5.2.0",
+  "sqlalchemy>=2.0.36",
+  # ─── UI monitoring ─────────────────────────────────────────
+  "streamlit>=1.40.0",
+  "plotly>=5.24.0",
+  "pandas>=2.2.3",
+  # ─── HTTP & async ──────────────────────────────────────────
+  "httpx>=0.28.0",
+  "aiofiles>=24.1.0",
+  # ─── CLI ───────────────────────────────────────────────────
+  "typer>=0.14.0",
+  "click>=8.1.7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.24.0",
+  "pytest-mock>=3.14.0",
+  "ruff>=0.8.0",
+  "mypy>=1.13.0",
+  "ipython>=8.30.0",
+]
+
+[project.scripts]
+stonks-orchestrator = "stonks_core.orchestrator.main:app"
+stonks-agent = "stonks_core.orchestrator.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stonks_core"]
+
+[tool.hatch.build]
+sources = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "UP", "C4", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

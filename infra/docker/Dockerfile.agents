@@ -1,0 +1,43 @@
+FROM python:3.12-slim
+
+# Installs system deps for git, ssh, build tools (some Python libs need them)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git \
+      curl \
+      ca-certificates \
+      build-essential \
+      openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv (rapide, reproductible)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    cp /root/.local/bin/uv /usr/local/bin/uv && \
+    cp /root/.local/bin/uvx /usr/local/bin/uvx
+
+# Install Node + GitHub CLI + GitNexus (pour le code-review agentique)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && apt-get install -y nodejs && \
+    npm install -g gitnexus@latest && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/stonks
+
+# Copy seulement les manifests d'abord pour cacher l'install de deps
+COPY agents_core/pyproject.toml /opt/stonks/agents_core/pyproject.toml
+
+# Install Python deps dans /opt/venv (hors du bind-mount, pour persistance)
+ENV VIRTUAL_ENV=/opt/venv
+RUN uv venv --python 3.12 ${VIRTUAL_ENV}
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+RUN uv pip install --no-cache -e /opt/stonks/agents_core
+
+# Le code source est mounté en runtime via docker-compose volumes (dev)
+# En prod, on COPIERA le code à la place du volume.
+
+# UID 1000 = "max" sur serveurmax (pour cohérence des permissions)
+RUN useradd -m -u 1000 stonks && chown -R stonks:stonks /opt/venv
+USER stonks
+
+# L'entrypoint par défaut lance l'orchestrateur en mode autonomous,
+# mais docker-compose surcharge la commande selon le service.
+CMD ["python", "-m", "stonks_core.orchestrator.main", "dry-run"]

@@ -1,0 +1,25 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  STONKS — Journal d'exécution des agents                             ║
+# ║                                                                      ║
+# ║  Format : JSON Lines (1 entrée = 1 ligne JSON)                       ║
+# ║  Schéma :                                                            ║
+# ║    {                                                                 ║
+# ║      "ts": ISO8601 UTC,                                              ║
+# ║      "agent": str (orchestrator | backend | frontend | …),           ║
+# ║      "phase": str,                                                   ║
+# ║      "action": str (tool_call | reasoning | decision | error | …),   ║
+# ║      "tool": str | null,                                             ║
+# ║      "input": object | null,                                         ║
+# ║      "output_summary": str,                                          ║
+# ║      "tokens": { "in": int, "out": int },                            ║
+# ║      "cost_usd": float,                                              ║
+# ║      "checkpoint_id": str | null,                                    ║
+# ║      "human_intervention": bool                                      ║
+# ║    }                                                                 ║
+# ║                                                                      ║
+# ║  RÈGLE ABSOLUE : tout agent qui agit DOIT y inscrire son action      ║
+# ║  AVANT et APRÈS toute opération side-effect (file, shell, git, LLM). ║
+# ║                                                                      ║
+# ║  Visualisation : task agents:logs                                    ║
+# ║                  ou UI Streamlit sur http://localhost:8501           ║
+# ╚══════════════════════════════════════════════════════════════════════╝

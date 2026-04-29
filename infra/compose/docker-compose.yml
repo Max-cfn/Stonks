@@ -1,0 +1,107 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  STONKS — Stack Phase 1 (minimale)                                   ║
+# ║                                                                      ║
+# ║  Services :                                                          ║
+# ║    - redis         : queue de jobs (sera utilisé en Phase 2)         ║
+# ║    - orchestrator  : orchestrateur principal (mode autonome)         ║
+# ║    - ui            : Streamlit monitoring sur :8501                  ║
+# ║    - gitnexus      : serveur HTTP GitNexus pour le code intelligence ║
+# ║                                                                      ║
+# ║  Phase 2 ajoutera : postgres, timescaledb, vault, fastapi backend.   ║
+# ║                                                                      ║
+# ║  Usage :                                                             ║
+# ║    task stack:up      → lance la stack                               ║
+# ║    task stack:logs    → tail -f                                      ║
+# ║    task stack:down    → stop                                         ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+name: stonks-phase1
+
+x-common-env: &common-env
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+  PYTHONPATH: "/opt/stonks/agents_core/src"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: stonks-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"   # binding localhost only — pas exposé sur LAN
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  gitnexus:
+    image: ghcr.io/abhigyanpatwari/gitnexus:latest
+    container_name: stonks-gitnexus
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4747:4747"
+    volumes:
+      - gitnexus-data:/data/gitnexus
+      - ../../:/workspace:ro    # le repo Stonks en read-only pour l'indexation
+    environment:
+      WORKSPACE_DIR: /workspace
+
+  orchestrator:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.agents
+    container_name: stonks-orchestrator
+    restart: "no"   # on ne redémarre pas auto — l'orchestrateur peut planter sur erreur volontaire
+    depends_on:
+      redis:
+        condition: service_healthy
+      gitnexus:
+        condition: service_started
+    environment:
+      <<: *common-env
+      REDIS_URL: redis://redis:6379/0
+      GITNEXUS_BACKEND_URL: http://gitnexus:4747
+    env_file:
+      - ../../.env
+    volumes:
+      - ../../:/opt/stonks
+    working_dir: /opt/stonks
+    # Mode dry-run par défaut. Pour lancer un brief, surcharge avec :
+    #   docker compose run --rm orchestrator python -m stonks_core.orchestrator.main autonomous --brief docs/briefs/X.md
+    command: ["python", "-m", "stonks_core.orchestrator.main", "dry-run"]
+
+  ui:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.agents
+    container_name: stonks-ui
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      <<: *common-env
+      REDIS_URL: redis://redis:6379/0
+      GITNEXUS_BACKEND_URL: http://gitnexus:4747
+    env_file:
+      - ../../.env
+    volumes:
+      - ../../:/opt/stonks
+    working_dir: /opt/stonks
+    ports:
+      - "0.0.0.0:8501:8501"   # accessible depuis le LAN (sur serveurmax direct)
+    command:
+      - streamlit
+      - run
+      - /opt/stonks/agents_core/src/stonks_core/ui/streamlit_app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+
+volumes:
+  redis-data:
+    driver: local
+  gitnexus-data:
+    driver: local

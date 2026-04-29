@@ -60,6 +60,30 @@ class OrchestratorSettings(BaseSettings):
     openrouter_http_referer: str = Field(default="https://github.com/Max-cfn/Stonks")
     openrouter_x_title: str = Field(default="Stonks-Orchestrator")
 
+    # ─── LLM : Provider routing & resilience ──────────────────────────
+    # Providers OpenRouter dans l'ordre de préférence (comma-separated, lowercase).
+    # DeepSeek officiel = le moins cher (0.435/0.870 par M tokens) + 1M ctx.
+    # Together = le plus cher (2.10/4.40) + 512k ctx → mis en `ignore` par défaut.
+    # Liste complète : https://openrouter.ai/docs/features/provider-routing
+    openrouter_provider_order: str = Field(
+        default="deepseek,gmicloud,atlascloud,siliconflow,novita"
+    )
+    openrouter_provider_ignore: str = Field(default="together")
+    openrouter_allow_fallbacks: bool = Field(default=True)
+    openrouter_provider_require_parameters: bool = Field(
+        default=True,
+        description="Exige que le provider supporte les params demandés (reasoning, tools, etc.)",
+    )
+
+    # Retry policy (sur 429, 5xx, timeouts)
+    openrouter_max_retries: int = Field(default=6)
+    openrouter_request_timeout_s: float = Field(default=120.0)
+
+    # Fallback model : si le modèle principal échoue après tous les retries,
+    # on bascule automatiquement sur ce modèle plus léger / plus dispo.
+    openrouter_fallback_model: str = Field(default="deepseek/deepseek-v4-flash")
+    openrouter_enable_model_fallback: bool = Field(default=True)
+
     # ─── Repository ───────────────────────────────────────────────────
     target_github_repo: str = Field(default="Max-cfn/Stonks")
     github_default_branch: str = Field(default="main")
@@ -88,6 +112,15 @@ class OrchestratorSettings(BaseSettings):
     def repo_root(self) -> Path:
         """Racine du monorepo (toutes les opérations file/shell sont sandboxées ici)."""
         return REPO_ROOT
+
+    # ─── Helpers ──────────────────────────────────────────────────────
+    @property
+    def provider_order_list(self) -> list[str]:
+        return [p.strip().lower() for p in self.openrouter_provider_order.split(",") if p.strip()]
+
+    @property
+    def provider_ignore_list(self) -> list[str]:
+        return [p.strip().lower() for p in self.openrouter_provider_ignore.split(",") if p.strip()]
 
 
 @lru_cache(maxsize=1)

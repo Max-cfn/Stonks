@@ -10,18 +10,20 @@ Sections (par ordre d'usage) :
   4. 📜 Logs            — tail du execution_log.txt
   5. 📊 Métriques       — tokens, coût, agents
   6. 📚 Briefs          — historique
+  7. ⚙️ Config          — édition rapide de quelques variables .env
 """
 from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -54,7 +56,7 @@ st.markdown(
       [data-testid="stChatMessage"] { padding: 0.6rem 1rem; }
       .small-muted { color: #888; font-size: 0.82rem; }
       .tool-call {
-          background: rgba(255,255,255,0.04);
+          background: rgba(74, 143, 255, 0.08);
           border-left: 3px solid #4a8fff;
           padding: 0.4rem 0.8rem;
           margin: 0.3rem 0;
@@ -62,13 +64,14 @@ st.markdown(
           font-size: 0.82rem;
       }
       .tool-result {
-          background: rgba(255,255,255,0.02);
+          background: rgba(74, 209, 122, 0.05);
           border-left: 3px solid #4ad17a;
           padding: 0.4rem 0.8rem;
           margin: 0.3rem 0;
           font-family: 'JetBrains Mono', monospace;
           font-size: 0.78rem;
           color: #aaa;
+          white-space: pre-wrap;
       }
     </style>
     """,
@@ -160,6 +163,36 @@ def _enqueue_run(brief_path: Path, autostart: bool) -> tuple[Path, int | None]:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# .env editor (limité à un sous-ensemble safe)
+# ─────────────────────────────────────────────────────────────────────
+_ENV_PATH = SETTINGS.repo_root / ".env"
+
+
+def _read_env_var(key: str) -> str | None:
+    if not _ENV_PATH.exists():
+        return None
+    pat = re.compile(rf"^{re.escape(key)}\s*=\s*(.*)$", re.MULTILINE)
+    m = pat.search(_ENV_PATH.read_text(encoding="utf-8"))
+    return m.group(1).strip() if m else None
+
+
+def _write_env_var(key: str, value: str) -> bool:
+    """Met à jour ou ajoute KEY=value dans le .env. Retourne True si modifié."""
+    if not _ENV_PATH.exists():
+        return False
+    text = _ENV_PATH.read_text(encoding="utf-8")
+    pat = re.compile(rf"^{re.escape(key)}\s*=.*$", re.MULTILINE)
+    if pat.search(text):
+        new_text = pat.sub(f"{key}={value}", text)
+    else:
+        new_text = text.rstrip() + f"\n{key}={value}\n"
+    if new_text == text:
+        return False
+    _ENV_PATH.write_text(new_text, encoding="utf-8")
+    return True
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Chat helpers : streaming d'un ReAct LangGraph dans Streamlit
 # ─────────────────────────────────────────────────────────────────────
 def _format_tool_args(args: dict[str, Any]) -> str:
@@ -175,16 +208,32 @@ def _format_tool_args(args: dict[str, Any]) -> str:
     return ", ".join(parts)
 
 
-def _stream_orchestrator(
+_INVALID_HISTORY_MARKERS = (
+    "INVALID_CHAT_HISTORY",
+    "do not have a corresponding ToolMessage",
+)
+
+
+def _is_invalid_history_error(exc: Exception) -> bool:
+    msg = str(exc)
+    return any(m in msg for m in _INVALID_HISTORY_MARKERS)
+
+
+def _run_orchestrator(
     graph: Any,
     user_message: str,
     thread_id: str,
     container: Any,
-) -> str:
-    """Stream la réponse de l'orchestrateur dans le container Streamlit donné.
+) -> tuple[str, bool]:
+    """Exécute l'orchestrateur sur 1 message user + render dans le container.
 
-    Affiche les tool calls + résultats au fil de l'eau, puis la réponse finale.
-    Retourne le texte final (pour ajout à l'historique).
+    Utilise stream_mode='values' qui renvoie l'état complet à chaque step
+    (cohérence garantie : impossible d'avoir un AIMessage avec tool_calls
+    sans son ToolMessage correspondant).
+
+    Returns:
+        (final_text, ok). Si ok=False et que c'est une erreur d'historique
+        corrompu, l'appelant peut décider de regénérer le thread_id.
     """
     config = {
         "configurable": {"thread_id": thread_id},
@@ -192,45 +241,66 @@ def _stream_orchestrator(
     }
     payload = {"messages": [HumanMessage(content=user_message)]}
 
-    final_text = ""
-    seen_tool_calls: set[str] = set()
+    rendered_tool_calls: set[str] = set()
+    rendered_tool_results: set[str] = set()
+    last_state: dict[str, Any] = {}
     final_placeholder = container.empty()
+    tools_box = container.container()
 
     try:
-        for update in graph.stream(payload, config=config, stream_mode="updates"):
-            # update = {"agent": {"messages": [...]}} ou {"tools": {"messages": [...]}}
-            for node_name, node_state in update.items():
-                msgs = node_state.get("messages", []) if isinstance(node_state, dict) else []
-                for msg in msgs:
-                    # Tool calls émis par l'agent
-                    if isinstance(msg, AIMessage) and msg.tool_calls:
-                        for tc in msg.tool_calls:
-                            tc_id = tc.get("id", "")
-                            if tc_id in seen_tool_calls:
-                                continue
-                            seen_tool_calls.add(tc_id)
-                            container.markdown(
-                                f"<div class='tool-call'>🔧 <b>{tc['name']}</b>"
-                                f"({_format_tool_args(tc.get('args', {}))})</div>",
-                                unsafe_allow_html=True,
-                            )
-                    # Résultats des tools
-                    elif isinstance(msg, ToolMessage):
-                        text = str(msg.content)
-                        preview = text[:400] + ("…" if len(text) > 400 else "")
-                        container.markdown(
-                            f"<div class='tool-result'>↳ {preview}</div>",
+        for state in graph.stream(payload, config=config, stream_mode="values"):
+            last_state = state
+            messages = state.get("messages", []) if isinstance(state, dict) else []
+            for msg in messages:
+                # Tool calls (à afficher dès qu'ils apparaissent)
+                if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
+                    for tc in msg.tool_calls:
+                        tc_id = tc.get("id", "") or f"{tc.get('name', '')}-{id(tc)}"
+                        if tc_id in rendered_tool_calls:
+                            continue
+                        rendered_tool_calls.add(tc_id)
+                        tools_box.markdown(
+                            f"<div class='tool-call'>🔧 <b>{tc['name']}</b>"
+                            f"({_format_tool_args(tc.get('args', {}))})</div>",
                             unsafe_allow_html=True,
                         )
-                    # Réponse texte de l'agent (peut être finale ou intermédiaire)
-                    elif isinstance(msg, AIMessage) and msg.content and not msg.tool_calls:
-                        final_text = msg.content if isinstance(msg.content, str) else str(msg.content)
-                        final_placeholder.markdown(final_text)
+                # Tool results
+                elif isinstance(msg, ToolMessage):
+                    tc_id = getattr(msg, "tool_call_id", "") or str(id(msg))
+                    if tc_id in rendered_tool_results:
+                        continue
+                    rendered_tool_results.add(tc_id)
+                    text = str(msg.content)
+                    preview = text[:600] + ("…" if len(text) > 600 else "")
+                    tools_box.markdown(
+                        f"<div class='tool-result'>↳ {preview}</div>",
+                        unsafe_allow_html=True,
+                    )
     except Exception as exc:  # noqa: BLE001
+        if _is_invalid_history_error(exc):
+            container.warning(
+                "⚠️ État de conversation incohérent détecté (probablement un crash "
+                "lors du tour précédent). Le thread va être réinitialisé — "
+                "renvoie ton message."
+            )
+            return "", False
         container.error(f"❌ Erreur orchestrateur : {type(exc).__name__}: {exc}")
-        return f"ERROR::{exc}"
+        return f"ERROR::{exc}", True
 
-    return final_text
+    # Récupère le dernier AIMessage texte (réponse finale)
+    final_text = ""
+    messages = last_state.get("messages", []) if isinstance(last_state, dict) else []
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage) and msg.content and not getattr(msg, "tool_calls", None):
+            final_text = msg.content if isinstance(msg.content, str) else str(msg.content)
+            break
+
+    if final_text:
+        final_placeholder.markdown(final_text)
+    elif not rendered_tool_calls:
+        final_placeholder.info("(L'orchestrateur n'a pas produit de réponse texte.)")
+
+    return final_text, True
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -248,6 +318,7 @@ with st.sidebar:
             "📜 Logs",
             "📊 Métriques",
             "📚 Briefs",
+            "⚙️ Config",
         ],
         label_visibility="collapsed",
     )
@@ -264,6 +335,7 @@ with st.sidebar:
     st.caption(f"**Reasoning** `{SETTINGS.openrouter_reasoning_effort}`")
     st.caption(f"**Repo** `{SETTINGS.target_github_repo}`")
     st.caption(f"**Budget** {SETTINGS.orchestrator_token_budget:,} tk")
+    st.caption("_Pour modifier : onglet ⚙️ Config_")
 
     # Pending approvals badge
     pending_count = len(list_pending_requests())
@@ -295,7 +367,7 @@ if section == "💬 Chat":
     # Toolbar
     c1, c2, c3 = st.columns([1, 1, 6])
     with c1:
-        if st.button("🔄 Nouveau chat"):
+        if st.button("🔄 Nouveau chat", help="Reset complet : nouveau thread, historique vidé"):
             st.session_state.chat_thread_id = f"chat-{uuid.uuid4().hex[:8]}"
             st.session_state.chat_history = []
             _build_graph.clear()  # reset le checkpointer en mémoire
@@ -315,18 +387,35 @@ if section == "💬 Chat":
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # Stream la réponse
+        # Run
         with st.chat_message("assistant"):
             with st.spinner("L'orchestrateur réfléchit…"):
                 graph = _build_graph()
                 container = st.container()
-                response = _stream_orchestrator(
+                response, ok = _run_orchestrator(
                     graph=graph,
                     user_message=user_input,
                     thread_id=st.session_state.chat_thread_id,
                     container=container,
                 )
-        st.session_state.chat_history.append({"role": "assistant", "content": response or "(pas de réponse)"})
+                # Auto-recovery : état corrompu → on regénère le thread, on retente UNE fois
+                if not ok:
+                    st.session_state.chat_thread_id = f"chat-{uuid.uuid4().hex[:8]}"
+                    _build_graph.clear()
+                    container.info(
+                        f"↻ Nouveau thread : `{st.session_state.chat_thread_id}` — retry…"
+                    )
+                    graph = _build_graph()
+                    retry_container = st.container()
+                    response, ok = _run_orchestrator(
+                        graph=graph,
+                        user_message=user_input,
+                        thread_id=st.session_state.chat_thread_id,
+                        container=retry_container,
+                    )
+        st.session_state.chat_history.append(
+            {"role": "assistant", "content": response or "(pas de réponse)"}
+        )
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -521,3 +610,88 @@ elif section == "📚 Briefs":
             )
             with st.expander(label):
                 st.markdown(b.read_text(encoding="utf-8"))
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Section : ⚙️ CONFIG
+# ═════════════════════════════════════════════════════════════════════
+elif section == "⚙️ Config":
+    st.header("⚙️ Configuration runtime")
+    st.caption(
+        "Modifie quelques variables clés du `.env`. **Les changements ne prennent effet "
+        "qu'après redémarrage de l'UI** (`Ctrl+C` puis `task ui`)."
+    )
+
+    if not _ENV_PATH.exists():
+        st.error(f"Pas de `.env` trouvé à `{_ENV_PATH}`. Lance `task setup` d'abord.")
+        st.stop()
+
+    # Budget tokens
+    st.subheader("Budget de tokens (par run)")
+    current_budget = int(_read_env_var("ORCHESTRATOR_TOKEN_BUDGET") or SETTINGS.orchestrator_token_budget)
+    new_budget = st.number_input(
+        "ORCHESTRATOR_TOKEN_BUDGET",
+        min_value=10_000,
+        max_value=100_000_000,
+        value=current_budget,
+        step=100_000,
+        help=(
+            "Plafond cumulé tokens (in+out) pour 1 run autonome. "
+            "Au-delà, l'orchestrateur s'arrête et demande une approbation. "
+            "Indicatif coût DeepSeek V4 Pro : ~$0.65/M tokens (mix in+out)."
+        ),
+    )
+    cost_estimate = new_budget * 0.65 / 1_000_000
+    st.caption(f"≈ **${cost_estimate:.2f}** de dépense max par run au prix DeepSeek V4 Pro actuel.")
+    if st.button("💾 Sauvegarder le budget", type="primary"):
+        if _write_env_var("ORCHESTRATOR_TOKEN_BUDGET", str(int(new_budget))):
+            st.success(f"`.env` mis à jour : ORCHESTRATOR_TOKEN_BUDGET={int(new_budget):,}")
+            st.warning("⚠️ Redémarre l'UI pour que le changement soit pris en compte.")
+        else:
+            st.info("Pas de changement.")
+
+    st.divider()
+
+    # Reasoning effort
+    st.subheader("Reasoning effort")
+    current_reasoning = _read_env_var("OPENROUTER_REASONING_EFFORT") or "high"
+    new_reasoning = st.selectbox(
+        "OPENROUTER_REASONING_EFFORT",
+        options=["minimal", "low", "medium", "high", "xhigh"],
+        index=["minimal", "low", "medium", "high", "xhigh"].index(current_reasoning)
+        if current_reasoning in {"minimal", "low", "medium", "high", "xhigh"}
+        else 3,
+        help=(
+            "Niveau de reasoning DeepSeek V4 Pro. `xhigh` = max (lent et cher mais "
+            "plus rigoureux pour orchestration). `low`/`minimal` = sous-tâches rapides."
+        ),
+    )
+    if st.button("💾 Sauvegarder le reasoning"):
+        if _write_env_var("OPENROUTER_REASONING_EFFORT", new_reasoning):
+            st.success(f"`.env` mis à jour : OPENROUTER_REASONING_EFFORT={new_reasoning}")
+            st.warning("⚠️ Redémarre l'UI pour appliquer.")
+        else:
+            st.info("Pas de changement.")
+
+    st.divider()
+
+    # Modèle principal
+    st.subheader("Modèle OpenRouter")
+    current_model = _read_env_var("OPENROUTER_MODEL") or SETTINGS.openrouter_model
+    new_model = st.text_input(
+        "OPENROUTER_MODEL",
+        value=current_model,
+        help="Slug OpenRouter exact. Voir https://openrouter.ai/models",
+    )
+    if st.button("💾 Sauvegarder le modèle"):
+        if _write_env_var("OPENROUTER_MODEL", new_model.strip()):
+            st.success(f"`.env` mis à jour : OPENROUTER_MODEL={new_model.strip()}")
+            st.warning("⚠️ Redémarre l'UI pour appliquer.")
+        else:
+            st.info("Pas de changement.")
+
+    st.divider()
+    st.caption(
+        f"Pour les autres variables (DB, Vault, RSS, GitHub, etc.), édite directement "
+        f"`{_ENV_PATH}` avec ton éditeur préféré."
+    )

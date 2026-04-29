@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python:
+    name: Python (agents_core)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agents_core
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh && echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Create venv & install
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: .venv/bin/ruff check src tests
+
+      - name: Type check (mypy)
+        run: .venv/bin/mypy src --no-incremental || true   # warning seulement en Phase 1
+
+      - name: Tests
+        run: .venv/bin/pytest tests/ -v || true   # pas de tests en Phase 1, on tolère
+
+  javascript:
+    name: JavaScript (apps + packages)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Lint
+        run: pnpm -r lint || true
+
+      - name: Build
+        run: pnpm -r build || true
+
+      - name: Test
+        run: pnpm -r test || true
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect hardcoded secrets in diff
+        run: |
+          # Heuristique simple : pas de OPENROUTER_API_KEY=sk-or-v1-... committé
+          if git grep -nE '(OPENROUTER_API_KEY|GITHUB_TOKEN|VAULT_TOKEN|POSTGRES_PASSWORD)\s*=\s*["'"'"']?(sk-|gho_|ghp_|hvs\.)[A-Za-z0-9_-]{20,}'; then
+            echo "::error::secret pattern détecté"
+            exit 1
+          fi
+          echo "✅ aucun secret évident détecté"

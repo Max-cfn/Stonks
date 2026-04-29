@@ -1,0 +1,12 @@
+{
+  "name": "@stonks/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Types partagés entre web/mobile (générés depuis Pydantic via openapi-typescript-codegen)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "echo 'Phase 2 : tsc'",
+    "generate": "echo 'Phase 2 : openapi-typescript-codegen depuis l\\'OpenAPI du backend'"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@stonks/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stonks — Frontend Next.js (Phase 2 — TBD par l'orchestrateur)",
+  "scripts": {
+    "dev": "echo 'Phase 2 : Next.js sera initialisé par l\\'agent Frontend'",
+    "build": "echo 'Phase 2'",
+    "lint": "echo 'Phase 2'",
+    "test": "echo 'Phase 2'"
+  }
+}

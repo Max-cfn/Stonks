@@ -1,0 +1,12 @@
+{
+  "name": "@stonks/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Design system Stonks (composants partagés web/mobile)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "echo 'Phase 2'",
+    "lint": "echo 'Phase 2'"
+  }
+}

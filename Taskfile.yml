@@ -1,0 +1,166 @@
+version: "3"
+
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  STONKS — Taskfile racine                                            ║
+# ║  Orchestre le monorepo polyglotte (TypeScript + Python).             ║
+# ║                                                                      ║
+# ║  Usage : task <nom>                                                  ║
+# ║          task --list-all                                             ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+
+vars:
+  PROJECT_ROOT:
+    sh: pwd
+  PYTHON: python3
+  AGENTS_VENV: "{{.PROJECT_ROOT}}/agents_core/.venv"
+  UV: uv
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+
+tasks:
+  # ─── Setup ───────────────────────────────────────────────────────────
+  setup:
+    desc: "Installe toutes les dépendances (JS + Python) et initialise les venv"
+    cmds:
+      - task: setup:js
+      - task: setup:agents
+      - task: setup:gitnexus
+      - echo "✅ Setup terminé. Tape 'task agents:dev' pour démarrer."
+
+  setup:js:
+    desc: "Installe les dépendances JS via pnpm"
+    cmds:
+      - pnpm install
+
+  setup:agents:
+    desc: "Crée le venv de agents_core et installe les deps Python via uv"
+    dir: agents_core
+    cmds:
+      - command -v uv || (curl -LsSf https://astral.sh/uv/install.sh | sh && echo "Relance ce shell pour avoir uv dans le PATH.")
+      - uv venv --python 3.12 .venv
+      - uv pip install -e ".[dev]"
+
+  setup:gitnexus:
+    desc: "Installe GitNexus globalement (knowledge graph pour code-review agentique)"
+    cmds:
+      - npm list -g gitnexus 2>/dev/null || sudo npm install -g gitnexus@latest
+      - echo "GitNexus installé. Lance 'task agents:index' pour indexer le repo."
+
+  # ─── Agents ──────────────────────────────────────────────────────────
+  agents:dev:
+    desc: "Lance l'orchestrateur principal en mode interactif (REPL)"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.orchestrator.main interactive"
+
+  agents:run:
+    desc: "Lance l'orchestrateur sur un brief : task agents:run -- --brief docs/briefs/X.md"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.orchestrator.main autonomous {{.CLI_ARGS}}"
+
+  agents:dry-run:
+    desc: "Valide la config et termine (utile pour vérifier le .env)"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.orchestrator.main dry-run"
+
+  agents:status:
+    desc: "État de la flotte (logs récents, tokens, coût, approbations en attente)"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.orchestrator.cli status"
+
+  agents:logs:
+    desc: "Suit le execution_log.txt en live"
+    cmds:
+      - tail -f {{.PROJECT_ROOT}}/execution_log.txt
+
+  agents:tail:
+    desc: "Affiche les 20 dernières entrées du log (JSON pretty)"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.orchestrator.cli tail --n 20"
+
+  agents:approve:
+    desc: "Approuve une demande humaine : task agents:approve -- <req_id> [comment]"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.orchestrator.cli approve {{.CLI_ARGS}}"
+
+  agents:reject:
+    desc: "Rejette une demande humaine : task agents:reject -- <req_id> [comment]"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.orchestrator.cli reject {{.CLI_ARGS}}"
+
+  agents:index:
+    desc: "Indexe le monorepo via GitNexus (graphe de dépendances pour les agents)"
+    cmds:
+      - cd {{.PROJECT_ROOT}} && gitnexus analyze --skip-embeddings
+
+  # ─── UI Monitoring ───────────────────────────────────────────────────
+  ui:
+    desc: "Lance l'UI Streamlit de monitoring (http://localhost:8501)"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/streamlit run {{.PROJECT_ROOT}}/agents_core/src/stonks_core/ui/streamlit_app.py --server.port 8501 --server.address 0.0.0.0"
+
+  # ─── Stack Docker ────────────────────────────────────────────────────
+  stack:up:
+    desc: "Lance toute la stack via docker-compose (orchestrateur + UI + Redis)"
+    cmds:
+      - docker compose -f infra/compose/docker-compose.yml up -d
+      - echo "Stack lancée. UI sur http://localhost:8501"
+
+  stack:down:
+    desc: "Arrête la stack"
+    cmds:
+      - docker compose -f infra/compose/docker-compose.yml down
+
+  stack:logs:
+    desc: "Logs de la stack"
+    cmds:
+      - docker compose -f infra/compose/docker-compose.yml logs -f
+
+  stack:rebuild:
+    desc: "Rebuild les images puis relance"
+    cmds:
+      - docker compose -f infra/compose/docker-compose.yml up -d --build
+
+  # ─── Qualité ─────────────────────────────────────────────────────────
+  lint:
+    desc: "Lint JS + Python"
+    cmds:
+      - pnpm -r lint || true
+      - cd agents_core && .venv/bin/ruff check src tests
+
+  format:
+    desc: "Formate JS + Python"
+    cmds:
+      - pnpm -r format || true
+      - cd agents_core && .venv/bin/ruff format src tests
+
+  test:
+    desc: "Tests JS + Python"
+    cmds:
+      - pnpm -r test || true
+      - cd agents_core && .venv/bin/pytest tests/ -v
+
+  # ─── Git helpers ─────────────────────────────────────────────────────
+  git:status:
+    desc: "git status enrichi"
+    cmds:
+      - git status -sb
+      - echo "---"
+      - git log --oneline -5
+
+  # ─── Clean ───────────────────────────────────────────────────────────
+  clean:
+    desc: "Nettoie les artefacts de build et caches"
+    cmds:
+      - find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name "node_modules" -prune -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name ".turbo" -exec rm -rf {} + 2>/dev/null || true
+      - rm -rf agents_core/.venv
+
+  default:
+    desc: "Affiche les tâches disponibles"
+    cmds:
+      - task --list-all

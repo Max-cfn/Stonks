@@ -1,0 +1,12 @@
+{
+  "name": "@stonks/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stonks — App mobile Expo (Phase 2 — TBD par l'orchestrateur)",
+  "scripts": {
+    "dev": "echo 'Phase 2 : Expo sera initialisé par l\\'agent Frontend'",
+    "build": "echo 'Phase 2'",
+    "lint": "echo 'Phase 2'",
+    "test": "echo 'Phase 2'"
+  }
+}

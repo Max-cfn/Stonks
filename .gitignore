@@ -1,0 +1,88 @@
+# ─── OS / Editor ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.code-workspace
+
+# ─── Secrets / Env ─────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+
+# ─── Node / pnpm ───────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+.pnp.*
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.turbo/
+.next/
+.expo/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+
+# ─── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.uv/
+
+# ─── Docker / Compose ──────────────────────────────────────────
+.docker-data/
+docker-volumes/
+
+# ─── Logs / Runtime ────────────────────────────────────────────
+*.log
+logs/
+runtime/
+tmp/
+.cache/
+
+# Le fichier execution_log.txt est versionné UNIQUEMENT pour son entête initiale,
+# le contenu agentique réel est gitignore (taille / bruit).
+execution_log.txt.gz
+execution_log.archive/
+
+# ─── Bases de données locales ──────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+data/postgres/
+data/timescale/
+
+# ─── GitNexus ──────────────────────────────────────────────────
+.gitnexus/
+
+# ─── Agents runtime ────────────────────────────────────────────
+agents_core/runtime/
+agents_core/.checkpoints/
+agents_core/.langgraph/

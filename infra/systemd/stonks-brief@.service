@@ -1,0 +1,57 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  Stonks Brief Runner — service systemd templated                     ║
+# ║                                                                      ║
+# ║  Permet de lancer un brief autonome qui SURVIT à un reboot serveur   ║
+# ║  (le subprocess Streamlit normal meurt en cas de reboot).            ║
+# ║                                                                      ║
+# ║  Usage :                                                             ║
+# ║    sudo systemctl start stonks-brief@2026-04-29_phase2-foundations   ║
+# ║    où le suffixe = nom du fichier brief sans .md, dans docs/briefs/  ║
+# ║                                                                      ║
+# ║  Voir : task brief:start -- 2026-04-29_phase2-foundations            ║
+# ║                                                                      ║
+# ║  Logs : journalctl -u stonks-brief@<nom>.service -f                  ║
+# ║         + agents_core/runtime/runs/brief-<nom>/                      ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+[Unit]
+Description=Stonks brief runner — %I
+Documentation=https://github.com/Max-cfn/Stonks
+After=network-online.target stonks-ui.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=max
+Group=stonks-dev
+WorkingDirectory=/opt/stonks/agents_core
+Environment="PYTHONPATH=/opt/stonks/agents_core/src"
+Environment="PATH=/opt/stonks/agents_core/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/opt/stonks/.env
+ExecStart=/opt/stonks/agents_core/.venv/bin/python -m stonks_core.orchestrator.main \
+    autonomous \
+    --brief /opt/stonks/docs/briefs/%i.md \
+    --thread-id systemd-%i
+
+# ⚠️ Pas de Restart : si le brief termine ou crash, on ne le redémarre pas
+# (sinon il bouclerait à l'infini). La reprise après reboot se fait
+# explicitement par toi via `task brief:start`.
+Restart=no
+
+# Logs : journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stonks-brief-%i
+
+# Limites — un brief peut consommer beaucoup pendant qu'il code
+MemoryMax=4G
+TasksMax=400
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/stonks /tmp
+
+[Install]
+# Pas WantedBy : on ne lance pas auto, on lance à la demande

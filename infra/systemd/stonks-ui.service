@@ -1,0 +1,45 @@
+[Unit]
+Description=Stonks Streamlit UI (orchestrator interface)
+Documentation=https://github.com/Max-cfn/Stonks
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=max
+Group=stonks-dev
+WorkingDirectory=/opt/stonks
+Environment="PYTHONPATH=/opt/stonks/agents_core/src"
+Environment="PATH=/opt/stonks/agents_core/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/opt/stonks/.env
+ExecStart=/opt/stonks/agents_core/.venv/bin/streamlit run \
+    /opt/stonks/agents_core/src/stonks_core/ui/streamlit_app.py \
+    --server.port=8501 \
+    --server.address=0.0.0.0 \
+    --server.headless=true \
+    --browser.gatherUsageStats=false
+
+# Restart policy : si l'UI crash, redémarre dans 5 sec, jusqu'à 10 fois en 10 min
+Restart=on-failure
+RestartSec=5s
+StartLimitBurst=10
+StartLimitIntervalSec=600
+
+# Logs : journald (regarde via `journalctl -u stonks-ui -f`)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stonks-ui
+
+# Limites de ressources (doux : on partage avec Minecraft + monitoring)
+MemoryMax=2G
+TasksMax=200
+
+# Hardening basique (compatible avec accès au repo /opt/stonks)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/stonks /tmp
+
+[Install]
+WantedBy=multi-user.target

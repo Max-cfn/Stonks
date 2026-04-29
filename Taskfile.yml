@@ -96,9 +96,74 @@ tasks:
 
   # ─── UI Monitoring ───────────────────────────────────────────────────
   ui:
-    desc: "Lance l'UI Streamlit de monitoring (http://localhost:8501)"
+    desc: "Lance l'UI Streamlit en foreground (dev). Pour la prod, voir ui:install"
     cmds:
-      - "{{.AGENTS_VENV}}/bin/streamlit run {{.PROJECT_ROOT}}/agents_core/src/stonks_core/ui/streamlit_app.py --server.port 8501 --server.address 0.0.0.0"
+      - "{{.AGENTS_VENV}}/bin/streamlit run {{.PROJECT_ROOT}}/agents_core/src/stonks_core/ui/streamlit_app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true"
+
+  ui:install:
+    desc: "Installe l'UI comme service systemd (daemon H24, auto-restart, boot)"
+    cmds:
+      - sudo bash {{.PROJECT_ROOT}}/scripts/install-systemd.sh
+
+  ui:start:
+    desc: "Démarre le service systemd stonks-ui"
+    cmds:
+      - sudo systemctl start stonks-ui.service
+
+  ui:stop:
+    desc: "Arrête le service systemd stonks-ui"
+    cmds:
+      - sudo systemctl stop stonks-ui.service
+
+  ui:restart:
+    desc: "Redémarre le service systemd stonks-ui (utile après modif config)"
+    cmds:
+      - sudo systemctl restart stonks-ui.service
+      - sleep 2
+      - systemctl is-active stonks-ui.service && echo '✅ UI active' || echo '❌ Échec'
+
+  ui:status:
+    desc: "État du service stonks-ui"
+    cmds:
+      - systemctl status stonks-ui.service --no-pager -l | head -20
+
+  ui:logs:
+    desc: "Logs live de l'UI (journalctl -f)"
+    cmds:
+      - journalctl -u stonks-ui.service -f -n 50
+
+  # ─── Brief autonome résilient (systemd) ──────────────────────────────
+  # Ces tâches lancent un brief qui SURVIT à un reboot du serveur.
+  # Le brief doit exister dans docs/briefs/<nom>.md
+  brief:start:
+    desc: "Lance un brief en service systemd (résilient reboot). Usage : task brief:start -- <nom-sans-.md>"
+    cmds:
+      - 'test -n "{{.CLI_ARGS}}" || (echo "❌ Précise le nom du brief : task brief:start -- 2026-04-29_demo" && exit 1)'
+      - 'test -f docs/briefs/{{.CLI_ARGS}}.md || (echo "❌ Brief introuvable : docs/briefs/{{.CLI_ARGS}}.md" && exit 1)'
+      - sudo systemctl start stonks-brief@{{.CLI_ARGS}}.service
+      - 'echo "✅ Brief lancé : stonks-brief@{{.CLI_ARGS}}"'
+      - 'echo "   Logs - task brief:logs -- {{.CLI_ARGS}}"'
+      - 'echo "   Stop - task brief:stop -- {{.CLI_ARGS}}"'
+
+  brief:stop:
+    desc: "Arrête un brief en cours. Usage : task brief:stop -- <nom>"
+    cmds:
+      - sudo systemctl stop stonks-brief@{{.CLI_ARGS}}.service
+
+  brief:status:
+    desc: "État d'un brief. Usage : task brief:status -- <nom>"
+    cmds:
+      - systemctl status stonks-brief@{{.CLI_ARGS}}.service --no-pager -l | head -20
+
+  brief:logs:
+    desc: "Logs live d'un brief. Usage : task brief:logs -- <nom>"
+    cmds:
+      - journalctl -u stonks-brief@{{.CLI_ARGS}}.service -f -n 100
+
+  brief:list:
+    desc: "Liste tous les briefs en cours d'exécution sous systemd"
+    cmds:
+      - systemctl list-units 'stonks-brief@*.service' --no-pager
 
   # ─── Stack Docker ────────────────────────────────────────────────────
   stack:up:

@@ -165,6 +165,88 @@ Timeout par défaut : **30 minutes**. Au-delà, la demande passe en `timeout` et
 
 ---
 
+## 🌙 Autonomie H24 — fonctionnement quand tu n'es pas là
+
+Tu peux totalement laisser Stonks tourner sans toi. Voici **ce qui résiste à quoi** :
+
+| Scénario | UI Streamlit | Brief lancé via UI | Brief lancé via systemd |
+|---|---|---|---|
+| Tu fermes ton browser | ✅ continue | ✅ continue | ✅ continue |
+| Tu fermes ton SSH | ✅ continue | ✅ continue | ✅ continue |
+| L'UI crash | ✅ redémarre auto (5 s) | ✅ continue | ✅ continue |
+| Le serveur reboot | ✅ redémarre auto au boot | ❌ meurt | ✅ relance possible |
+| Coupure réseau | ✅ continue (LAN) | ✅ continue | ✅ continue |
+| OOM kill | ✅ redémarre auto | ❌ meurt | ⚠️ ne redémarre pas auto |
+
+### Mise en place de l'autonomie
+
+```bash
+# Une fois suffit — installe les services systemd (UI + brief template)
+sudo task ui:install
+```
+
+À partir de là :
+- **UI** tourne H24 sur `http://serveurmax:8501`, redémarre toute seule si elle plante, redémarre au boot du serveur
+- Tu peux fermer ton SSH, rentrer chez toi, l'UI reste joignable
+
+### Pour les briefs vraiment longs (résistants au reboot)
+
+L'UI permet de lancer un brief en subprocess (✅ survit à fermeture de l'UI mais ❌ meurt au reboot). Pour un brief qui doit **vraiment** tourner même si tu reboot le serveur, utilise systemd directement :
+
+```bash
+# 1. Crée ton brief
+cp docs/briefs/_template.md docs/briefs/2026-04-29_phase2.md
+nano docs/briefs/2026-04-29_phase2.md
+
+# 2. Lance-le comme service systemd
+task brief:start -- 2026-04-29_phase2
+
+# 3. Surveillance
+task brief:status -- 2026-04-29_phase2     # statut + dernières lignes
+task brief:logs -- 2026-04-29_phase2       # tail -f journalctl
+task brief:list                            # tous les briefs en cours
+
+# 4. Stop manuel si besoin
+task brief:stop -- 2026-04-29_phase2
+```
+
+Note : un brief systemd ne **redémarre pas auto** s'il termine ou crash (ce serait une boucle infinie). Si le serveur reboot pendant que le brief tournait, tu dois le relancer manuellement à ton retour avec `task brief:start --`. La reprise transparente après crash arrive en Phase 2 (Redis + worker watchdog).
+
+### Configurer un brief pour 24h sans humain
+
+Dans le brief Markdown, en section `Mode d'exécution` :
+
+```yaml
+mode: autonomous_long_run
+budget_usd_max: 20
+human_checkpoint_every_steps: 50      # résumé tous les 50 steps
+approval_timeout_minutes: 720         # 12h avant timeout d'une approbation
+escalation_policy: minimal            # n'escalade que sur erreur bloquante ou choix critique
+```
+
+Si tu mets `escalation_policy: minimal` et `approval_timeout_minutes: 720`, l'orchestrateur tranchera tout seul tant qu'il peut, et n'attendra ton OK que pour les actions destructives (suppression de migration, force push, etc.). Si tu n'es pas là sous 12h pour répondre, la demande passe en `timeout` et il abandonne cette action puis continue le reste.
+
+### Ce qu'il faut savoir avant de partir au lit
+
+1. **Le coût LLM peut grimper en 8h** — même à 2 tokens/sec, un orchestrateur reasoning_effort=high peut consommer $5-10 par heure de bouclage actif. **Toujours mettre un `budget_usd_max`** dans le brief.
+2. **Le quota OpenRouter** est sur ton compte → vérifie ton crédit avant : https://openrouter.ai/credits
+3. **Le serveur partage la RAM** avec ton Minecraft ATM10 (10 Go). Si la mission est lourde, coupe le serv MC avant de partir : `sudo systemctl stop minecraft-atm10` (ou ton script habituel).
+4. **`execution_log.txt` grossit vite** — pour 8h d'autonomie, prévois ~50-200 Mo. Le log est rotaté/archivé par le script `clean` mais pas en automatique.
+
+### Diagnostic à ton retour
+
+```bash
+task ui:status                              # UI alive ?
+task brief:list                             # quels briefs ont tourné ?
+task agents:tail                            # 20 dernières actions
+grep '"action": "error"' execution_log.txt | tail -10   # erreurs ?
+grep '"human_intervention": true' execution_log.txt     # approbations en attente ?
+```
+
+Ou plus simple : ouvre l'UI et regarde successivement **📜 Logs**, **📊 Métriques**, **⏳ Approbations**.
+
+---
+
 ## Surveillance pendant qu'il bosse
 
 ```bash

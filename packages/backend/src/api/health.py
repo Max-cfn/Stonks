@@ -8,9 +8,9 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health")
 async def health() -> dict[str, str]:
-    """Renvoie le statut de l'API et sa version."""
+    """Renvoie le statut de l'API, sa version et le nom du service."""
     try:
         app_version = version("stonks-backend")
     except Exception:
         app_version = "0.1.0"
-    return {"status": "ok", "version": app_version}
+    return {"status": "ok", "version": app_version, "service": "stonks-backend"}

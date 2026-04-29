@@ -15,17 +15,13 @@ async def client():
 
 
 @pytest.mark.asyncio
-async def test_health_returns_ok(client):
+async def test_health_returns_expected_payload(client):
+    """Valide que GET /health retourne le payload exact attendu."""
     resp = await client.get("/health")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "ok"
-    assert "version" in data
-
-
-@pytest.mark.asyncio
-async def test_health_version_is_string(client):
-    resp = await client.get("/health")
-    data = resp.json()
-    assert isinstance(data["version"], str)
-    assert len(data["version"]) > 0
+    assert data == {
+        "status": "ok",
+        "version": "0.1.0",
+        "service": "stonks-backend",
+    }

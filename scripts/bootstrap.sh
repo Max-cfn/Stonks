@@ -75,16 +75,13 @@ mkdir -p agents_core/runtime/{approvals,runs,checkpoints} docs/briefs
 touch execution_log.txt
 ok "dossiers runtime créés"
 
-# 7. Install GitNexus si absent
-if ! command -v gitnexus >/dev/null; then
-    bold "▶ Installation de GitNexus (knowledge graph code-review)"
-    if command -v sudo >/dev/null && [ "$EUID" -ne 0 ]; then
-        sudo npm install -g gitnexus@latest || warn "Échec install GitNexus (non bloquant pour Phase 1)"
-    else
-        npm install -g gitnexus@latest || warn "Échec install GitNexus (non bloquant pour Phase 1)"
-    fi
+# 7. GitNexus est installé comme devDependency du monorepo (cf. package.json)
+# Le binaire est dispo via : pnpm exec gitnexus <cmd>  ou  node_modules/.bin/gitnexus
+if [ -x "$REPO_ROOT/node_modules/.bin/gitnexus" ]; then
+    ok "gitnexus $($REPO_ROOT/node_modules/.bin/gitnexus --version | head -1) (via devDependency)"
+else
+    warn "gitnexus pas trouvé dans node_modules — relance \`pnpm install\` à la racine"
 fi
-command -v gitnexus >/dev/null && ok "gitnexus $(gitnexus --version 2>/dev/null | head -1 || echo installé)"
 
 # 8. Validation finale
 bold "▶ Vérification de la config (dry-run)"

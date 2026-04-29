@@ -16,7 +16,26 @@
     "dev": "pnpm -r --parallel dev"
   },
   "devDependencies": {
+    "gitnexus": "^1.6.3",
     "prettier": "^3.3.3",
     "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@ladybugdb/core",
+      "tree-sitter",
+      "tree-sitter-c-sharp",
+      "tree-sitter-cpp",
+      "tree-sitter-go",
+      "tree-sitter-java",
+      "tree-sitter-javascript",
+      "tree-sitter-kotlin",
+      "tree-sitter-php",
+      "tree-sitter-python",
+      "tree-sitter-ruby",
+      "tree-sitter-rust",
+      "tree-sitter-swift",
+      "tree-sitter-typescript"
+    ]
   }
 }

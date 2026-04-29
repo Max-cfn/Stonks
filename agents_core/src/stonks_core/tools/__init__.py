@@ -23,6 +23,7 @@ from .git_tools import (
 )
 from .gitnexus_tools import (
     gitnexus_context,
+    gitnexus_cypher,
     gitnexus_detect_changes,
     gitnexus_impact,
     gitnexus_index,
@@ -58,6 +59,7 @@ ORCHESTRATOR_TOOLS = [
     gitnexus_query,
     gitnexus_context,
     gitnexus_detect_changes,
+    gitnexus_cypher,
     spawn_agent,
     request_human_approval,
 ]
@@ -116,6 +118,7 @@ __all__ = [
     "gitnexus_query",
     "gitnexus_context",
     "gitnexus_detect_changes",
+    "gitnexus_cypher",
     "spawn_agent",
     "request_human_approval",
     "list_pending_requests",

@@ -34,3 +34,19 @@ class TestSettings:
     def test_log_level_configurable(self) -> None:
         s = Settings(log_level="DEBUG")
         assert s.log_level == "DEBUG"
+
+
+    def test_cors_origins_default(self) -> None:
+        s = Settings()
+        assert s.cors_origins == ["http://localhost:3000"]
+
+    def test_jwt_defaults(self) -> None:
+        s = Settings()
+        assert s.jwt_algorithm == "HS256"
+        assert s.jwt_access_token_expire_minutes == 15
+        assert s.jwt_refresh_token_expire_days == 7
+
+    def test_rate_limit_config(self) -> None:
+        s = Settings()
+        assert s.rate_limit_auth_login == "5/minute"
+        assert s.rate_limit_global == "100/minute"

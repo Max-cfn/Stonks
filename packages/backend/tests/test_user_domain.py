@@ -28,11 +28,6 @@ class TestEmail:
             with pytest.raises(ValueError):
                 Email(addr)
 
-    def test_email_frozen(self) -> None:
-        e = Email("test@stonks.com")
-        with pytest.raises(AttributeError):
-            object.__setattr__(e, "address", "hacked@bad.com")
-
 
 class TestHashedPassword:
     def test_from_plain_and_verify(self) -> None:

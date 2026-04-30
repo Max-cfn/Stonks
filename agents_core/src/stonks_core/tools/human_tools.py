@@ -24,7 +24,6 @@ from langchain_core.tools import tool
 from ..journal import log_event
 from ..orchestrator.config import get_settings
 
-
 ApprovalStatus = Literal["pending", "approved", "rejected", "timeout"]
 
 

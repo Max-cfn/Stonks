@@ -58,7 +58,7 @@ def log_event(
     phase: str,
     action: str,
     tool: str | None = None,
-    input: dict[str, Any] | None = None,  # noqa: A002 — keyword volontaire
+    input: dict[str, Any] | None = None,
     output_summary: str = "",
     tokens_in: int = 0,
     tokens_out: int = 0,

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -28,7 +27,6 @@ def status() -> None:
     recent = read_recent(n=500)
 
     actions_by_agent: Counter[str] = Counter()
-    cost_by_model: Counter[str] = Counter()
     tokens_in_total = 0
     tokens_out_total = 0
     cost_total = 0.0

@@ -33,7 +33,6 @@ from stonks_core.journal import init_logger, read_recent
 from stonks_core.orchestrator.config import get_settings
 from stonks_core.tools.human_tools import list_pending_requests, respond_to_request
 
-
 SETTINGS = get_settings()
 init_logger(SETTINGS.execution_log_path)
 
@@ -134,30 +133,37 @@ def _enqueue_run(brief_path: Path, autostart: bool) -> tuple[Path, int | None]:
     }
     pid: int | None = None
     if autostart:
-        log_out = open(run_dir / "stdout.log", "w", encoding="utf-8")
-        log_err = open(run_dir / "stderr.log", "w", encoding="utf-8")
-        proc = subprocess.Popen(
-            [
-                sys.executable,
-                "-m",
-                "stonks_core.orchestrator.main",
-                "autonomous",
-                "--brief",
-                str(brief_path),
-                "--thread-id",
-                f"run-{run_id}",
-            ],
-            cwd=str(SETTINGS.repo_root / "agents_core"),
-            stdout=log_out,
-            stderr=log_err,
-            stdin=subprocess.DEVNULL,
-            start_new_session=True,
-            env={**os.environ, "PYTHONPATH": str(SETTINGS.repo_root / "agents_core" / "src")},
-        )
-        pid = proc.pid
-        status["status"] = "running"
-        status["pid"] = pid
-        status["started_at"] = datetime.utcnow().isoformat() + "Z"
+        with (
+            open(run_dir / "stdout.log", "w", encoding="utf-8") as log_out,
+            open(run_dir / "stderr.log", "w", encoding="utf-8") as log_err,
+        ):
+            proc = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "stonks_core.orchestrator.main",
+                    "autonomous",
+                    "--brief",
+                    str(brief_path),
+                    "--thread-id",
+                    f"run-{run_id}",
+                ],
+                cwd=str(SETTINGS.repo_root / "agents_core"),
+                stdout=log_out,
+                stderr=log_err,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
+                env={
+                    **os.environ,
+                    "PYTHONPATH": str(SETTINGS.repo_root / "agents_core" / "src"),
+                },
+            )
+            pid = proc.pid
+            status["status"] = "running"
+            status["pid"] = pid
+            status["started_at"] = datetime.utcnow().isoformat() + "Z"
+            # subprocess.Popen detaches the child; we close the file handles
+            # subprocess.Popen detaches the child
     (run_dir / "status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
     return run_dir, pid
 
@@ -276,7 +282,7 @@ def _run_orchestrator(
                         f"<div class='tool-result'>↳ {preview}</div>",
                         unsafe_allow_html=True,
                     )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         if _is_invalid_history_error(exc):
             container.warning(
                 "⚠️ État de conversation incohérent détecté (probablement un crash "
@@ -388,31 +394,30 @@ if section == "💬 Chat":
             st.markdown(user_input)
 
         # Run
-        with st.chat_message("assistant"):
-            with st.spinner("L'orchestrateur réfléchit…"):
+        with st.chat_message("assistant"), st.spinner("L'orchestrateur réfléchit…"):
+            graph = _build_graph()
+            container = st.container()
+            response, ok = _run_orchestrator(
+                graph=graph,
+                user_message=user_input,
+                thread_id=st.session_state.chat_thread_id,
+                container=container,
+            )
+            # Auto-recovery : état corrompu → on regénère le thread, on retente UNE fois
+            if not ok:
+                st.session_state.chat_thread_id = f"chat-{uuid.uuid4().hex[:8]}"
+                _build_graph.clear()
+                container.info(
+                    f"↻ Nouveau thread : `{st.session_state.chat_thread_id}` — retry…"
+                )
                 graph = _build_graph()
-                container = st.container()
+                retry_container = st.container()
                 response, ok = _run_orchestrator(
                     graph=graph,
                     user_message=user_input,
                     thread_id=st.session_state.chat_thread_id,
-                    container=container,
+                    container=retry_container,
                 )
-                # Auto-recovery : état corrompu → on regénère le thread, on retente UNE fois
-                if not ok:
-                    st.session_state.chat_thread_id = f"chat-{uuid.uuid4().hex[:8]}"
-                    _build_graph.clear()
-                    container.info(
-                        f"↻ Nouveau thread : `{st.session_state.chat_thread_id}` — retry…"
-                    )
-                    graph = _build_graph()
-                    retry_container = st.container()
-                    response, ok = _run_orchestrator(
-                        graph=graph,
-                        user_message=user_input,
-                        thread_id=st.session_state.chat_thread_id,
-                        container=retry_container,
-                    )
         st.session_state.chat_history.append(
             {"role": "assistant", "content": response or "(pas de réponse)"}
         )
@@ -480,7 +485,7 @@ elif section == "📝 Brief autonome":
         for s_path in runs:
             try:
                 data = json.loads(s_path.read_text(encoding="utf-8"))
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
             run_id = s_path.parent.name
             status = data.get("status", "?")

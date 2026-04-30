@@ -6,7 +6,6 @@ from typing import Annotated, Any, Literal, TypedDict
 
 from langchain_core.messages import BaseMessage
 
-
 AgentRole = Literal[
     "orchestrator",
     "backend",

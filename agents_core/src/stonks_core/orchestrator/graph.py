@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
@@ -73,7 +73,7 @@ def run_brief(graph: Any, brief: str, thread_id: str = "main") -> str:
 
     try:
         result: dict[str, Any] = graph.invoke({"messages": messages}, config=config)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         err = f"Orchestrator crashed: {type(exc).__name__}: {exc}"
         log_event(agent="orchestrator", phase="ad_hoc", action="orchestrator_error",
                   output_summary=err)

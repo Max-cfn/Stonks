@@ -30,4 +30,3 @@ allowBuilds:
   tree-sitter-rust: true
   tree-sitter-swift: false # pas de Swift, et build foireux sur Linux
   tree-sitter-typescript: true
-confirmModulesPurge: false

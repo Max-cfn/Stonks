@@ -16,7 +16,7 @@ Ce module ajoute 3 couches de résilience face aux rate limits / 5xx upstream :
 
 3. **Fallback model** : via `Runnable.with_fallbacks([flash])`. Si Pro est
    indisponible même après tous les retries, le graph bascule
-   automatiquement sur DeepSeek V4 Flash (5× moins cher, plus dispo) sans
+   automatiquement sur DeepSeek V4 Flash (5x moins cher, plus dispo) sans
    perdre la conversation.
 
 Tous les appels sont loggés dans execution_log.txt et les coûts sont
@@ -31,7 +31,6 @@ from langchain_openai import ChatOpenAI
 
 from ..journal import log_event
 from .config import OrchestratorSettings, get_settings
-
 
 # Tarifs OpenRouter pour DeepSeek V4 (au 28 avril 2026, vérifier régulièrement).
 # Source : https://openrouter.ai/api/v1/models/<slug>/endpoints

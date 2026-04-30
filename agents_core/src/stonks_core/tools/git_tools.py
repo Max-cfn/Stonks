@@ -32,7 +32,7 @@ def git_status() -> str:
     """git status -sb + dernier commit."""
     log_event(agent="orchestrator", phase="ad_hoc", action="tool_call", tool="git_status")
     code, out, err = _run(["git", "status", "-sb"])
-    code2, last, _ = _run(["git", "log", "--oneline", "-1"])
+    _code2, last, _ = _run(["git", "log", "--oneline", "-1"])
     msg = f"=== status ===\n{out}\n=== last commit ===\n{last}"
     log_event(agent="orchestrator", phase="ad_hoc", action="tool_result",
               tool="git_status", output_summary=f"code={code}")
@@ -80,16 +80,11 @@ def git_commit(message: str, paths: list[str] | None = None, sign_off: bool = Tr
         _run(["git", "add", *paths])
 
     full_msg = message
-    if sign_off:
-        if "Co-authored-by:" not in full_msg:
-            full_msg += "\n\nCo-authored-by: stonks-orchestrator <bot@stonks.local>"
+    if sign_off and "Co-authored-by:" not in full_msg:
+        full_msg += "\n\nCo-authored-by: stonks-orchestrator <bot@stonks.local>"
 
     code, out, err = _run(["git", "commit", "-m", full_msg], timeout=30)
-    if code != 0:
-        # Probablement "nothing to commit"
-        msg = f"NO-COMMIT: {err or out}"
-    else:
-        msg = f"OK commit\n{out}"
+    msg = f"NO-COMMIT: {err or out}" if code != 0 else f"OK commit\n{out}"
     log_event(agent="orchestrator", phase="ad_hoc", action="tool_result",
               tool="git_commit", output_summary=msg[:300])
     return msg
@@ -107,7 +102,7 @@ def git_push(remote: str = "origin", branch: str | None = None, set_upstream: bo
     if branch:
         args.append(branch)
     code, out, err = _run(args, timeout=120)
-    msg = f"OK push" if code == 0 else f"ERROR: {err or out}"
+    msg = "OK push" if code == 0 else f"ERROR: {err or out}"
     log_event(agent="orchestrator", phase="ad_hoc", action="tool_result",
               tool="git_push", output_summary=msg)
     return f"{msg}\n{out}\n{err}".strip()

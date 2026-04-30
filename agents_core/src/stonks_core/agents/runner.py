@@ -51,7 +51,7 @@ def run_subagent(role: str, brief: str, max_iterations: int = 50) -> str:
             {"messages": messages},
             config={"recursion_limit": max_iterations * 2},  # 2 = un pas LLM + un pas Tool
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         err = f"subagent {role} crashed: {type(exc).__name__}: {exc}"
         log_event(agent=role, phase="ad_hoc", action="subagent_error", output_summary=err)
         return f"ERROR::{err}"

@@ -101,10 +101,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect hardcoded secrets in diff
+      - name: Detect hardcoded secrets
         run: |
-          # Heuristique simple : pas de OPENROUTER_API_KEY=sk-or-v1-... committé
-          if git grep -nE '(OPENROUTER_API_KEY|GITHUB_TOKEN|VAULT_TOKEN|POSTGRES_PASSWORD)\s*=\s*["'"'"']?(sk-|gho_|ghp_|hvs\.)[A-Za-z0-9_-]{20,}'; then
+          # Heuristique simple : pas de OPENROUTER_API_KEY=sk-or-v1-… committé.
+          # On exclut execution_log.txt qui journalise TOUTES les actions
+          # (y compris les commandes refusées contenant des placeholders).
+          if git grep -nE '(OPENROUTER_API_KEY|GITHUB_TOKEN|VAULT_TOKEN|POSTGRES_PASSWORD)\s*=\s*["'"'"']?(sk-|gho_|ghp_|hvs\.)[A-Za-z0-9_-]{20,}' -- ':!execution_log.txt'; then
             echo "::error::secret pattern détecté"
             exit 1
           fi

@@ -86,3 +86,9 @@ data/timescale/
 agents_core/runtime/
 agents_core/.checkpoints/
 agents_core/.langgraph/
+
+# ─── GitNexus side-effects ─────────────────────────────────────
+.claude/
+.gitnexus/
+AGENTS.md
+CLAUDE.md

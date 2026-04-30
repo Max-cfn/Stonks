@@ -1,13 +1,24 @@
 [project]
 name = "stonks-backend"
 version = "0.1.0"
-description = "Stonks — Backend FastAPI (stub Phase 1, implémentation Phase 2)"
+description = "Stonks — Backend FastAPI"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34,<1",
+]
 
 [project.optional-dependencies]
-dev = []
+dev = [
+    "httpx>=0.28",
+    "pytest>=8",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.8",
+]
+
+[project.scripts]
+stonks-api = "src.__main__:main"
 
 [build-system]
 requires = ["hatchling"]

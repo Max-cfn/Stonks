@@ -16,6 +16,7 @@ vars:
   UV: uv
 
 env:
+  CI: "true"
   PYTHONDONTWRITEBYTECODE: "1"
   PYTHONUNBUFFERED: "1"
 
@@ -92,7 +93,7 @@ tasks:
   agents:index:
     desc: "Indexe le monorepo via GitNexus (graphe de dépendances pour les agents)"
     cmds:
-      - cd {{.PROJECT_ROOT}} && gitnexus analyze --skip-embeddings
+      - cd {{.PROJECT_ROOT}} && pnpm exec gitnexus analyze --skip-agents-md .
 
   # ─── UI Monitoring ───────────────────────────────────────────────────
   ui:

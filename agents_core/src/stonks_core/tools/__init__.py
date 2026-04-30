@@ -23,6 +23,7 @@ from .git_tools import (
 )
 from .gitnexus_tools import (
     gitnexus_context,
+    gitnexus_cypher,
     gitnexus_detect_changes,
     gitnexus_impact,
     gitnexus_index,
@@ -35,7 +36,6 @@ from .human_tools import (
 )
 from .shell_tools import shell_exec
 from .spawn_tools import spawn_agent
-
 
 # Toolsets prêts à binder selon le rôle.
 ORCHESTRATOR_TOOLS = [
@@ -58,6 +58,7 @@ ORCHESTRATOR_TOOLS = [
     gitnexus_query,
     gitnexus_context,
     gitnexus_detect_changes,
+    gitnexus_cypher,
     spawn_agent,
     request_human_approval,
 ]
@@ -97,30 +98,31 @@ REVIEWER_TOOLS = [
 
 
 __all__ = [
+    "ORCHESTRATOR_TOOLS",
+    "REVIEWER_TOOLS",
+    "SUBAGENT_TOOLS",
+    "file_append",
+    "file_delete",
+    "file_list",
     "file_read",
     "file_write",
-    "file_append",
-    "file_list",
-    "file_delete",
-    "shell_exec",
-    "git_status",
-    "git_branch",
-    "git_commit",
-    "git_push",
-    "git_pull",
-    "git_diff",
     "gh_pr_create",
     "gh_pr_merge",
-    "gitnexus_index",
-    "gitnexus_impact",
-    "gitnexus_query",
+    "git_branch",
+    "git_commit",
+    "git_diff",
+    "git_pull",
+    "git_push",
+    "git_status",
     "gitnexus_context",
+    "gitnexus_cypher",
     "gitnexus_detect_changes",
-    "spawn_agent",
-    "request_human_approval",
+    "gitnexus_impact",
+    "gitnexus_index",
+    "gitnexus_query",
     "list_pending_requests",
+    "request_human_approval",
     "respond_to_request",
-    "ORCHESTRATOR_TOOLS",
-    "SUBAGENT_TOOLS",
-    "REVIEWER_TOOLS",
+    "shell_exec",
+    "spawn_agent",
 ]

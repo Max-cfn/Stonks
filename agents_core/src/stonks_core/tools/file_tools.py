@@ -107,10 +107,7 @@ def file_list(path: str = ".", pattern: str = "*", recursive: bool = False) -> s
     p = _resolve_safe(path)
     if not p.is_dir():
         return f"ERROR: not a directory: {path}"
-    if recursive:
-        entries = sorted(p.rglob(pattern))
-    else:
-        entries = sorted(p.glob(pattern))
+    entries = sorted(p.rglob(pattern)) if recursive else sorted(p.glob(pattern))
     root = get_settings().repo_root.resolve()
     out = "\n".join(str(e.relative_to(root)) for e in entries)
     log_event(agent="orchestrator", phase="ad_hoc", action="tool_result",

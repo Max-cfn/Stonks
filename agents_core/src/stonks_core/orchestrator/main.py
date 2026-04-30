@@ -112,7 +112,7 @@ def dry_run() -> None:
     """Valide la config et termine — utile pour vérifier le .env."""
     try:
         s = get_settings()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         console.print(f"[red]❌ Config invalide : {exc}[/red]")
         raise typer.Exit(code=1) from exc
 

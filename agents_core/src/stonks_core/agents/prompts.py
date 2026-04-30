@@ -6,14 +6,13 @@ spécifique au rôle.
 """
 from __future__ import annotations
 
-
 COMMON_FOOTER = """\
 
 # RÈGLES UNIVERSELLES (rappel)
 1. Logue chaque side-effect (file/shell/git/LLM) dans execution_log.txt — AVANT et APRÈS.
 2. Avant de modifier l'API publique d'un module : `gitnexus_impact(target=...)`.
 3. Pas de secrets en clair. Jamais.
-4. Pas de boucle : si tu fais 3× la même action sans progrès, escalade.
+4. Pas de boucle : si tu fais 3x la même action sans progrès, escalade.
 5. Anti-hallucination : ne suppose pas qu'un fichier existe — vérifie.
 6. Tu peux passer des heures sur une tâche. La rigueur prime sur la vitesse.
 

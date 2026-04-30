@@ -13,7 +13,6 @@ from langchain_core.tools import tool
 from ..journal import log_event
 from ..orchestrator.config import get_settings
 
-
 # Première occurrence de la commande après expansion shell.
 ALLOWED_COMMANDS = {
     # JS / pnpm
@@ -106,7 +105,7 @@ def shell_exec(
         log_event(agent="orchestrator", phase="ad_hoc", action="error",
                   tool="shell_exec", output_summary=msg)
         return msg
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         msg = f"ERROR: {type(exc).__name__}: {exc}"
         log_event(agent="orchestrator", phase="ad_hoc", action="error",
                   tool="shell_exec", output_summary=msg)

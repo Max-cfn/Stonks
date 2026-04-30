@@ -15,7 +15,6 @@ from langchain_core.tools import tool
 
 from ..journal import log_event
 
-
 SubAgentRole = Literal["backend", "frontend", "security", "data", "reviewer"]
 
 

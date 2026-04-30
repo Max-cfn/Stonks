@@ -7,6 +7,34 @@ on:
     branches: [main]
 
 jobs:
+  backend:
+    name: Backend (packages/backend)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh && echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Create venv & install
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: .venv/bin/ruff check src tests
+
+      - name: Tests
+        run: .venv/bin/pytest tests/ -v
+
   python:
     name: Python (agents_core)
     runs-on: ubuntu-24.04
@@ -45,8 +73,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        # version is auto-detected from package.json → packageManager
 
       - uses: actions/setup-node@v4
         with:
@@ -73,10 +100,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect hardcoded secrets in diff
+      - name: Detect hardcoded secrets
         run: |
-          # Heuristique simple : pas de OPENROUTER_API_KEY=sk-or-v1-... committé
-          if git grep -nE '(OPENROUTER_API_KEY|GITHUB_TOKEN|VAULT_TOKEN|POSTGRES_PASSWORD)\s*=\s*["'"'"']?(sk-|gho_|ghp_|hvs\.)[A-Za-z0-9_-]{20,}'; then
+          # Heuristique simple : pas de OPENROUTER_API_KEY=sk-or-v1-… committé.
+          # On exclut execution_log.txt qui journalise TOUTES les actions
+          # (y compris les commandes refusées contenant des placeholders).
+          if git grep -nE '(OPENROUTER_API_KEY|GITHUB_TOKEN|VAULT_TOKEN|POSTGRES_PASSWORD)\s*=\s*["'"'"']?(sk-|gho_|ghp_|hvs\.)[A-Za-z0-9_-]{20,}' -- ':!execution_log.txt'; then
             echo "::error::secret pattern détecté"
             exit 1
           fi

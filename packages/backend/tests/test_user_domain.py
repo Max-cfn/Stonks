@@ -1,6 +1,7 @@
 """Tests for domain user entity & value objects."""
 import pytest
-from stonks_backend.domain.user import User, Email, HashedPassword
+
+from stonks_backend.domain.user import Email, HashedPassword, User
 
 # Use passwords ≤ 72 bytes for bcrypt 5.0 compatibility
 _VALID_PASSWORD = "secure12"
@@ -29,8 +30,8 @@ class TestEmail:
 
     def test_email_frozen(self) -> None:
         e = Email("test@stonks.com")
-        with pytest.raises(Exception):
-            e.address = "hacked@bad.com"  # type: ignore[misc]
+        with pytest.raises(AttributeError):
+            object.__setattr__(e, "address", "hacked@bad.com")
 
 
 class TestHashedPassword:

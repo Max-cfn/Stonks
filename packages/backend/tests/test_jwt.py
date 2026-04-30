@@ -3,6 +3,7 @@ import time
 from uuid import uuid4
 
 import pytest
+
 from stonks_backend.infrastructure.config import Settings
 from stonks_backend.infrastructure.security.jwt_service import JWTService, TokenPair
 

@@ -1,9 +1,7 @@
 """Vault client adapter — hvac with .env fallback in dev mode."""
 from __future__ import annotations
 
-import json
 import logging
-from typing import Any
 
 import hvac
 

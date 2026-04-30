@@ -3,14 +3,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from stonks_backend.app import create_app
-from stonks_backend.domain.user import User
 from stonks_backend.application.ports.repositories import (
     RefreshTokenRepositoryPort,
     UserRepositoryPort,
 )
-from stonks_backend.infrastructure.security.jwt_service import JWTService
+from stonks_backend.domain.user import User
 from stonks_backend.infrastructure.config import Settings
-
+from stonks_backend.infrastructure.security.jwt_service import JWTService
 
 # ── Test doubles (in-memory repos) ────────────────────────────────────
 
@@ -77,9 +76,9 @@ async def client(test_settings: Settings) -> AsyncClient:
     from stonks_backend.application.use_cases.auth.auth_service import AuthUseCases
     from stonks_backend.interfaces.api.dependencies.auth import (
         get_auth_use_cases,
-        get_user_repo,
-        get_refresh_repo,
         get_jwt_service,
+        get_refresh_repo,
+        get_user_repo,
     )
 
     auth_uc = AuthUseCases(user_repo, refresh_repo, jwt_svc)

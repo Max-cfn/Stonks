@@ -1,5 +1,6 @@
 """Entry point: uvicorn server."""
 import uvicorn
+
 from stonks_backend.app import create_app
 
 

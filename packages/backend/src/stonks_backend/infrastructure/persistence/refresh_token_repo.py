@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC
 from uuid import UUID
 
 import redis.asyncio as aioredis
@@ -25,9 +26,9 @@ class RefreshTokenRepository(RefreshTokenRepositoryPort):
         self._redis = redis_client
 
     async def store(self, user_id: UUID, token_hash: str, expires_at_ts: int) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now_ts = int(datetime.now(timezone.utc).timestamp())
+        now_ts = int(datetime.now(UTC).timestamp())
         ttl = expires_at_ts - now_ts
         if ttl <= 0:
             raise ValueError("expires_at_ts is in the past")

@@ -1,6 +1,5 @@
 """FastAPI application factory."""
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 

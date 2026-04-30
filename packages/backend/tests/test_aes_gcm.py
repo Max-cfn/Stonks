@@ -1,7 +1,13 @@
 """Tests for AES-256-GCM encryption."""
 import base64
+
 import pytest
-from stonks_backend.infrastructure.security.aes_gcm import AESCipher, DecryptionError, create_aes_cipher
+
+from stonks_backend.infrastructure.security.aes_gcm import (
+    AESCipher,
+    DecryptionError,
+    create_aes_cipher,
+)
 
 # Exact 32-byte keys
 _KEY_32 = b"0123456789abcdef0123456789abcdef"  # 32 bytes exactly

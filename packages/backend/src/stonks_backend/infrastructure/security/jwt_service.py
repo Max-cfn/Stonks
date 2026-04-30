@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -56,7 +56,7 @@ class JWTService:
     # ── Token creation ────────────────────────────────────────────
 
     def create_access_token(self, user_id: UUID, email: str) -> str:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload: dict[str, Any] = {
             "sub": str(user_id),
             "email": email,
@@ -68,7 +68,7 @@ class JWTService:
         return jwt.encode(payload, self._secret, algorithm=self._algorithm)
 
     def create_refresh_token(self, user_id: UUID) -> str:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload: dict[str, Any] = {
             "sub": str(user_id),
             "iat": int(now.timestamp()),

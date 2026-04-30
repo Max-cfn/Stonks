@@ -16,6 +16,7 @@ vars:
   UV: uv
 
 env:
+  CI: "true"
   PYTHONDONTWRITEBYTECODE: "1"
   PYTHONUNBUFFERED: "1"
 

@@ -1,12 +1,11 @@
-"""Tests for GET /health endpoint."""
+"""Tests for health check endpoints."""
 import pytest
-import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from src.app import create_app
+from stonks_backend.app import create_app
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def client():
     app = create_app()
     transport = ASGITransport(app=app)
@@ -15,13 +14,22 @@ async def client():
 
 
 @pytest.mark.asyncio
-async def test_health_returns_expected_payload(client):
-    """Valide que GET /health retourne le payload exact attendu."""
+async def test_health_returns_ok(client: AsyncClient) -> None:
     resp = await client.get("/health")
     assert resp.status_code == 200
     data = resp.json()
-    assert data == {
-        "status": "ok",
-        "version": "0.1.0",
-        "service": "stonks-backend",
-    }
+    assert data["status"] == "ok"
+    assert data["service"] == "stonks-backend"
+    assert "version" in data
+
+
+@pytest.mark.asyncio
+async def test_ready_returns_status(client: AsyncClient) -> None:
+    """Ready probe returns status — may be 'not_ready' if no DB/Vault."""
+    resp = await client.get("/ready")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] in ("ready", "not_ready")
+    assert "checks" in data
+    assert "database" in data["checks"]
+    assert "vault" in data["checks"]

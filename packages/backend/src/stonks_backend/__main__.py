@@ -1,7 +1,6 @@
 """Entry point: uvicorn server."""
 import uvicorn
-
-from src.app import create_app
+from stonks_backend.app import create_app
 
 
 def main() -> None:

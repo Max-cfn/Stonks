@@ -13,6 +13,7 @@ vars:
     sh: pwd
   PYTHON: python3
   AGENTS_VENV: "{{.PROJECT_ROOT}}/agents_core/.venv"
+  BACKEND_VENV: "{{.PROJECT_ROOT}}/packages/backend/.venv"
   UV: uv
 
 env:
@@ -26,6 +27,7 @@ tasks:
     desc: "Installe toutes les dépendances (JS + Python) et initialise les venv"
     cmds:
       - task: setup:js
+      - task: setup:backend
       - task: setup:agents
       - task: setup:gitnexus
       - echo "✅ Setup terminé. Tape 'task agents:dev' pour démarrer."
@@ -40,6 +42,14 @@ tasks:
     dir: agents_core
     cmds:
       - command -v uv || (curl -LsSf https://astral.sh/uv/install.sh | sh && echo "Relance ce shell pour avoir uv dans le PATH.")
+      - uv venv --python 3.12 .venv
+      - uv pip install -e ".[dev]"
+
+  setup:backend:
+    desc: "Installation du venv backend avec toutes les dépendances"
+    dir: packages/backend
+    cmds:
+      - command -v uv || (curl -LsSf https://astral.sh/uv/install.sh | sh)
       - uv venv --python 3.12 .venv
       - uv pip install -e ".[dev]"
 
@@ -95,6 +105,66 @@ tasks:
     cmds:
       - cd {{.PROJECT_ROOT}} && pnpm exec gitnexus analyze --skip-agents-md .
 
+  # ─── Backend ─────────────────────────────────────────────────────────
+  backend:dev:
+    desc: "Lance le backend FastAPI en mode dev (reload auto)"
+    cmds:
+      - "{{.BACKEND_VENV}}/bin/uvicorn stonks_backend.app:create_app --factory --reload --host 0.0.0.0 --port 8000"
+
+  backend:test:
+    desc: "Lance les tests backend avec couverture"
+    dir: packages/backend
+    cmds:
+      - "{{.BACKEND_VENV}}/bin/python -m pytest tests/ -v --cov=stonks_backend --cov-report=term-missing"
+
+  backend:lint:
+    desc: "Lint + type-check du backend"
+    dir: packages/backend
+    cmds:
+      - "{{.BACKEND_VENV}}/bin/ruff check src/ tests/"
+      - "{{.BACKEND_VENV}}/bin/ruff format --check src/ tests/"
+      - "{{.BACKEND_VENV}}/bin/mypy src/"
+
+  backend:format:
+    desc: "Formate le code backend"
+    dir: packages/backend
+    cmds:
+      - "{{.BACKEND_VENV}}/bin/ruff format src/ tests/"
+
+  # ─── Base de données ─────────────────────────────────────────────────
+  migrate:
+    desc: "Lance les migrations Alembic"
+    dir: packages/backend
+    cmds:
+      - "{{.BACKEND_VENV}}/bin/alembic upgrade head"
+
+  migrate:rollback:
+    desc: "Annule la dernière migration"
+    dir: packages/backend
+    cmds:
+      - "{{.BACKEND_VENV}}/bin/alembic downgrade -1"
+
+  migrate:new:
+    desc: "Crée une nouvelle migration autogenerate. Usage : task migrate:new -- 'description'"
+    dir: packages/backend
+    cmds:
+      - "{{.BACKEND_VENV}}/bin/alembic revision --autogenerate -m '{{.CLI_ARGS}}'"
+
+  migrate:status:
+    desc: "Affiche l'état des migrations"
+    dir: packages/backend
+    cmds:
+      - "{{.BACKEND_VENV}}/bin/alembic current"
+      - "{{.BACKEND_VENV}}/bin/alembic history"
+
+  db:reset:
+    desc: "Réinitialise la DB de dev (drop + recreate + migrate)"
+    cmds:
+      - docker compose -f infra/compose/docker-compose.yml down postgres -v
+      - docker compose -f infra/compose/docker-compose.yml up -d postgres
+      - sleep 5
+      - task migrate
+
   # ─── UI Monitoring ───────────────────────────────────────────────────
   ui:
     desc: "Lance l'UI Streamlit en foreground (dev). Pour la prod, voir ui:install"
@@ -134,8 +204,6 @@ tasks:
       - journalctl -u stonks-ui.service -f -n 50
 
   # ─── Brief autonome résilient (systemd) ──────────────────────────────
-  # Ces tâches lancent un brief qui SURVIT à un reboot du serveur.
-  # Le brief doit exister dans docs/briefs/<nom>.md
   brief:start:
     desc: "Lance un brief en service systemd (résilient reboot). Usage : task brief:start -- <nom-sans-.md>"
     cmds:
@@ -168,10 +236,13 @@ tasks:
 
   # ─── Stack Docker ────────────────────────────────────────────────────
   stack:up:
-    desc: "Lance toute la stack via docker-compose (orchestrateur + UI + Redis)"
+    desc: "Lance toute la stack via docker-compose (postgres, vault, redis, gitnexus, UI)"
     cmds:
       - docker compose -f infra/compose/docker-compose.yml up -d
-      - echo "Stack lancée. UI sur http://localhost:8501"
+      - echo "✅ Stack lancée."
+      - echo "   Postgres : localhost:5432 (stonks/stonks_dev/stonks_dev)"
+      - echo "   Vault    : http://localhost:8200 (token: dev-token)"
+      - echo "   UI       : http://localhost:8501"
 
   stack:down:
     desc: "Arrête la stack"
@@ -224,7 +295,7 @@ tasks:
       - find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
       - find . -type d -name "node_modules" -prune -exec rm -rf {} + 2>/dev/null || true
       - find . -type d -name ".turbo" -exec rm -rf {} + 2>/dev/null || true
-      - rm -rf agents_core/.venv
+      - rm -rf agents_core/.venv packages/backend/.venv
 
   default:
     desc: "Affiche les tâches disponibles"

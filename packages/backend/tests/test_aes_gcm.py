@@ -1,4 +1,5 @@
 """Tests for AES-256-GCM encryption."""
+
 import base64
 
 import pytest

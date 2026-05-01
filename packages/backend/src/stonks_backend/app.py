@@ -1,5 +1,8 @@
 """FastAPI application factory."""
-from fastapi import FastAPI, Request
+
+from collections.abc import Awaitable, Callable
+
+from fastapi import FastAPI, Request, Response
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -17,7 +20,7 @@ def create_app() -> FastAPI:
     )
 
     # Rate limit handler
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     _register_routers(app)
     _register_middleware(app)
@@ -31,9 +34,12 @@ def _register_routers(app: FastAPI) -> None:
 
 def _register_middleware(app: FastAPI) -> None:
     """Register application middleware."""
+
     # Request-ID middleware — propagated via X-Request-ID header
     @app.middleware("http")
-    async def request_id_middleware(request: Request, call_next):
+    async def request_id_middleware(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         import uuid
 
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))

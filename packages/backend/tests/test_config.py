@@ -1,4 +1,5 @@
 """Tests for configuration module."""
+
 import pytest
 
 from stonks_backend.infrastructure.config import Settings, get_settings
@@ -34,7 +35,6 @@ class TestSettings:
     def test_log_level_configurable(self) -> None:
         s = Settings(log_level="DEBUG")
         assert s.log_level == "DEBUG"
-
 
     def test_cors_origins_default(self) -> None:
         s = Settings()

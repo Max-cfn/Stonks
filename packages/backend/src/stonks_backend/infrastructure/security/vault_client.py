@@ -1,13 +1,13 @@
 """Vault client adapter — hvac with .env fallback in dev mode."""
+
 from __future__ import annotations
 
-import logging
-
-import hvac
+import hvac  # type: ignore[import-untyped]
+import structlog
 
 from stonks_backend.infrastructure.config import Settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class VaultError(Exception):
@@ -61,7 +61,7 @@ class VaultClient:
         if self._client is None:
             return True  # dev fallback always healthy
         try:
-            return self._client.is_authenticated()
+            return self._client.is_authenticated()  # type: ignore[no-any-return]
         except Exception:
             return False
 
@@ -88,7 +88,7 @@ class VaultClient:
                 mount_point=mount_point,
             )
             data = response["data"]["data"]
-            return data.get(key)
+            return data.get(key)  # type: ignore[no-any-return]
         except Exception as exc:
             logger.error("vault read_secret failed", path=path, key=key, error=str(exc))
             return None

@@ -1,4 +1,5 @@
 """Auth integration tests — full flow: register → login → refresh → /me."""
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 

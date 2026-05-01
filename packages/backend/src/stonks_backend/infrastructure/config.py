@@ -1,4 +1,5 @@
 """Configuration via Pydantic Settings — lit .env + fallback Vault en production."""
+
 from __future__ import annotations
 
 import os
@@ -48,9 +49,7 @@ class Settings(BaseSettings):
 
     # ── Database ───────────────────────────────────────────────────
     database_url: SecretStr = Field(
-        default=SecretStr(
-            "postgresql+asyncpg://stonks:stonks_dev@localhost:5432/stonks_dev"
-        ),
+        default=SecretStr("postgresql+asyncpg://stonks:stonks_dev@localhost:5432/stonks_dev"),
     )
     database_pool_size: int = 10
     database_max_overflow: int = 20

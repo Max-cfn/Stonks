@@ -1,4 +1,5 @@
 """Abstract ports — interfaces that infrastructure adapters must implement."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

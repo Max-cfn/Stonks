@@ -1,4 +1,5 @@
 """Auth routes — /auth/register, /auth/login, /auth/refresh, /auth/me."""
+
 from __future__ import annotations
 
 import logging

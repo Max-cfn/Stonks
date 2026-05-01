@@ -1,15 +1,16 @@
 """Redis adapter for RefreshTokenRepositoryPort."""
+
 from __future__ import annotations
 
-import logging
-from datetime import UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 import redis.asyncio as aioredis
+import structlog
 
 from stonks_backend.application.ports.repositories import RefreshTokenRepositoryPort
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Redis key prefix
 _PREFIX = "stonks:refresh:"
@@ -26,8 +27,6 @@ class RefreshTokenRepository(RefreshTokenRepositoryPort):
         self._redis = redis_client
 
     async def store(self, user_id: UUID, token_hash: str, expires_at_ts: int) -> None:
-        from datetime import datetime
-
         now_ts = int(datetime.now(UTC).timestamp())
         ttl = expires_at_ts - now_ts
         if ttl <= 0:

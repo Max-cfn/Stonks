@@ -1,4 +1,5 @@
 """Tests for JWT service."""
+
 import time
 from uuid import uuid4
 

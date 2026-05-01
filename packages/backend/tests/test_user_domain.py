@@ -1,4 +1,5 @@
 """Tests for domain user entity & value objects."""
+
 import pytest
 
 from stonks_backend.domain.user import Email, HashedPassword, User

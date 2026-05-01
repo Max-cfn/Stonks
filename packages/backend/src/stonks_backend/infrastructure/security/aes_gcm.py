@@ -24,7 +24,7 @@ class AESCipher:
     """
 
     NONCE_LENGTH: int = 12  # 96 bits
-    TAG_LENGTH: int = 16    # 128 bits (implied by AESGCM)
+    TAG_LENGTH: int = 16  # 128 bits (implied by AESGCM)
 
     def __init__(self, key: bytes | str) -> None:
         """Initialize with a 32-byte AES-256 key.

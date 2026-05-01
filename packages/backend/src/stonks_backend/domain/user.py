@@ -1,4 +1,5 @@
 """Domain entities & value objects — User, Email, HashedPassword."""
+
 from __future__ import annotations
 
 import re

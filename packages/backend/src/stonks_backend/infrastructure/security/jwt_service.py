@@ -1,4 +1,5 @@
 """JWT service — HS256 access + refresh tokens, Vault-backed secret."""
+
 from __future__ import annotations
 
 import logging
@@ -7,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from jose import JWTError, jwt
+from jose import JWTError, jwt  # type: ignore[import-untyped]
 
 from stonks_backend.infrastructure.config import Settings
 from stonks_backend.infrastructure.security.vault_client import VaultClient
@@ -65,7 +66,7 @@ class JWTService:
             "iss": self._issuer,
             "type": "access",
         }
-        return jwt.encode(payload, self._secret, algorithm=self._algorithm)
+        return jwt.encode(payload, self._secret, algorithm=self._algorithm)  # type: ignore[no-any-return]
 
     def create_refresh_token(self, user_id: UUID) -> str:
         now = datetime.now(UTC)
@@ -76,7 +77,7 @@ class JWTService:
             "iss": self._issuer,
             "type": "refresh",
         }
-        return jwt.encode(payload, self._secret, algorithm=self._algorithm)
+        return jwt.encode(payload, self._secret, algorithm=self._algorithm)  # type: ignore[no-any-return]
 
     def create_token_pair(self, user_id: UUID, email: str) -> TokenPair:
         return TokenPair(

@@ -1,9 +1,11 @@
 """Auth use cases — register, login, refresh_token."""
+
 from __future__ import annotations
 
 import hashlib
-import logging
 from uuid import UUID
+
+import structlog
 
 from stonks_backend.application.ports.repositories import (
     RefreshTokenRepositoryPort,
@@ -12,7 +14,7 @@ from stonks_backend.application.ports.repositories import (
 from stonks_backend.domain.user import Email, User
 from stonks_backend.infrastructure.security.jwt_service import JWTService, TokenPair
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class AuthUseCases:

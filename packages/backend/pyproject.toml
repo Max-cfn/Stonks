@@ -74,7 +74,9 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 namespace_packages = true
+mypy_path = ["src"]
 explicit_package_bases = true
+files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]

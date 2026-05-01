@@ -1,4 +1,5 @@
 """Health check endpoints — GET /health (liveness) + GET /ready (DB + Vault)."""
+
 from importlib.metadata import version
 from typing import Any
 

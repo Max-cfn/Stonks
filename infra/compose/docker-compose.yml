@@ -1,20 +1,20 @@
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  STONKS — Stack Phase 1 (minimale)                                   ║
+# ║  STONKS — Stack Phase 2 (fondations backend)                          ║
 # ║                                                                      ║
 # ║  Services :                                                          ║
-# ║    - redis         : queue de jobs (sera utilisé en Phase 2)         ║
+# ║    - postgres      : PostgreSQL 16 + TimescaleDB 2.x                 ║
+# ║    - redis         : cache / rate limit / pub-sub                    ║
+# ║    - vault         : HashiCorp Vault (dev mode, secrets)             ║
+# ║    - gitnexus      : serveur HTTP GitNexus (code intelligence)       ║
 # ║    - orchestrator  : orchestrateur principal (mode autonome)         ║
 # ║    - ui            : Streamlit monitoring sur :8501                  ║
-# ║    - gitnexus      : serveur HTTP GitNexus pour le code intelligence ║
-# ║                                                                      ║
-# ║  Phase 2 ajoutera : postgres, timescaledb, vault, fastapi backend.   ║
 # ║                                                                      ║
 # ║  Usage :                                                             ║
 # ║    task stack:up      → lance la stack                               ║
 # ║    task stack:logs    → tail -f                                      ║
 # ║    task stack:down    → stop                                         ║
 # ╚══════════════════════════════════════════════════════════════════════╝
-name: stonks-phase1
+name: stonks
 
 x-common-env: &common-env
   PYTHONDONTWRITEBYTECODE: "1"
@@ -22,12 +22,59 @@ x-common-env: &common-env
   PYTHONPATH: "/opt/stonks/agents_core/src"
 
 services:
+  # ── PostgreSQL 16 + TimescaleDB ────────────────────────────────────
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: stonks-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: stonks
+      POSTGRES_PASSWORD: stonks_dev
+      POSTGRES_DB: stonks_dev
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stonks -d stonks_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # ── Vault (dev mode) ──────────────────────────────────────────────
+  vault:
+    image: hashicorp/vault:1.18
+    container_name: stonks-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "127.0.0.1:8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-token
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    volumes:
+      - vault-data:/vault/data
+      - ./vault-init.sh:/vault-init.sh:ro
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    command: >
+      vault server -dev
+      -dev-root-token-id=dev-token
+      -dev-listen-address=0.0.0.0:8200
+
+  # ── Redis ─────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: stonks-redis
     restart: unless-stopped
     ports:
-      - "127.0.0.1:6379:6379"   # binding localhost only — pas exposé sur LAN
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
@@ -37,6 +84,7 @@ services:
       timeout: 3s
       retries: 5
 
+  # ── GitNexus ──────────────────────────────────────────────────────
   gitnexus:
     image: ghcr.io/abhigyanpatwari/gitnexus:latest
     container_name: stonks-gitnexus
@@ -45,16 +93,17 @@ services:
       - "127.0.0.1:4747:4747"
     volumes:
       - gitnexus-data:/data/gitnexus
-      - ../../:/workspace:ro    # le repo Stonks en read-only pour l'indexation
+      - ../../:/workspace:ro
     environment:
       WORKSPACE_DIR: /workspace
 
+  # ── Orchestrateur ─────────────────────────────────────────────────
   orchestrator:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.agents
     container_name: stonks-orchestrator
-    restart: "no"   # on ne redémarre pas auto — l'orchestrateur peut planter sur erreur volontaire
+    restart: "no"
     depends_on:
       redis:
         condition: service_healthy
@@ -69,10 +118,9 @@ services:
     volumes:
       - ../../:/opt/stonks
     working_dir: /opt/stonks
-    # Mode dry-run par défaut. Pour lancer un brief, surcharge avec :
-    #   docker compose run --rm orchestrator python -m stonks_core.orchestrator.main autonomous --brief docs/briefs/X.md
     command: ["python", "-m", "stonks_core.orchestrator.main", "dry-run"]
 
+  # ── UI Streamlit ──────────────────────────────────────────────────
   ui:
     build:
       context: ../..
@@ -91,7 +139,7 @@ services:
       - ../../:/opt/stonks
     working_dir: /opt/stonks
     ports:
-      - "0.0.0.0:8501:8501"   # accessible depuis le LAN (sur serveurmax direct)
+      - "0.0.0.0:8501:8501"
     command:
       - streamlit
       - run
@@ -101,7 +149,11 @@ services:
       - --server.headless=true
 
 volumes:
+  pg-data:
+    driver: local
   redis-data:
     driver: local
   gitnexus-data:
+    driver: local
+  vault-data:
     driver: local

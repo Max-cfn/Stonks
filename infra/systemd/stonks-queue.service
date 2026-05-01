@@ -1,0 +1,52 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  Stonks Queue Runner — service systemd                               ║
+# ║                                                                      ║
+# ║  Processe la queue de briefs séquentiellement, en arrière-plan.      ║
+# ║  Quand la queue est vide, le process se termine. systemd peut le     ║
+# ║  redémarrer à la demande via `task queue:start`.                     ║
+# ║                                                                      ║
+# ║  Usage :                                                             ║
+# ║    task queue:add -- docs/briefs/phase-2-1.md                        ║
+# ║    task queue:add -- docs/briefs/phase-2-2.md                        ║
+# ║    task queue:start            # lance le runner systemd             ║
+# ║    task queue:logs             # tail des logs                       ║
+# ║    task queue:status                                                 ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+[Unit]
+Description=Stonks Queue Runner — sequential brief execution
+Documentation=https://github.com/Max-cfn/Stonks
+After=network-online.target stonks-ui.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=max
+Group=stonks-dev
+WorkingDirectory=/opt/stonks/agents_core
+Environment="PYTHONPATH=/opt/stonks/agents_core/src"
+Environment="PATH=/opt/stonks/agents_core/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/opt/stonks/.env
+ExecStart=/opt/stonks/agents_core/.venv/bin/python -m stonks_core.queue run
+
+# Pas de Restart auto : si la queue est vide, on arrête. Si crash, on
+# laisse l'humain investiguer plutôt que de boucler.
+Restart=no
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stonks-queue
+
+# Limites
+MemoryMax=4G
+TasksMax=400
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/stonks /tmp
+
+[Install]
+# Pas WantedBy : on lance à la demande

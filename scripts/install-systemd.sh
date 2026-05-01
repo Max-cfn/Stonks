@@ -32,14 +32,18 @@ cp "$REPO_ROOT/infra/systemd/stonks-ui.service" "$SYSTEMD_DIR/stonks-ui.service"
 echo "▶ Installation de stonks-brief@.service (template)"
 cp "$REPO_ROOT/infra/systemd/stonks-brief@.service" "$SYSTEMD_DIR/stonks-brief@.service"
 
-# 3. Reload systemd
+# 3. Queue runner
+echo "▶ Installation de stonks-queue.service"
+cp "$REPO_ROOT/infra/systemd/stonks-queue.service" "$SYSTEMD_DIR/stonks-queue.service"
+
+# 4. Reload systemd
 systemctl daemon-reload
 
-# 4. Enable + start UI (le seul qui doit tourner H24)
+# 5. Enable + start UI (le seul qui doit tourner H24)
 echo "▶ Activation de stonks-ui (boot + auto-restart)"
 systemctl enable --now stonks-ui.service
 
-# 5. Status
+# 6. Status
 sleep 2
 echo ""
 echo "═════════════════════════════════════════════════════"

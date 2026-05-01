@@ -1,0 +1,98 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      # Ubuntu 24 = PEP 668 (externally-managed). On crée un vrai venv au lieu de --system.
+      - name: Create venv & install dev deps
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+      - name: Ruff check
+        run: .venv/bin/ruff check src/ tests/
+      - name: Ruff format check
+        run: .venv/bin/ruff format --check src/ tests/
+      - name: Mypy strict
+        run: .venv/bin/mypy src/ --strict
+
+  test:
+    runs-on: ubuntu-24.04
+    needs: lint
+    defaults:
+      run:
+        working-directory: packages/backend
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: stonks
+          POSTGRES_PASSWORD: stonks_dev
+          POSTGRES_DB: stonks_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      STONKS_DATABASE_URL: postgresql+asyncpg://stonks:stonks_dev@localhost:5432/stonks_dev
+      STONKS_REDIS_URL: redis://localhost:6379/0
+      STONKS_JWT_SECRET: ci-test-secret-at-least-32-chars!!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Create venv & install dev deps
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+      - name: Run tests with coverage
+        run: |
+          .venv/bin/pytest tests/ -v \
+            --cov=stonks_backend \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=78
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: packages/backend/coverage.xml
+          retention-days: 7

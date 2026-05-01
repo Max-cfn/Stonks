@@ -50,7 +50,6 @@ from typing import Any, Literal
 from .journal import init_logger, log_event
 from .orchestrator.config import get_settings
 
-
 SETTINGS = get_settings()
 init_logger(SETTINGS.execution_log_path)
 
@@ -327,7 +326,7 @@ def _cli() -> None:
     elif args.cmd == "run":
         run()
     elif args.cmd == "clear":
-        n = clear(only_done=args.only_done)
+        clear(only_done=args.only_done)
         print(f"✅ {'kept non-terminated, cleared done items' if args.only_done else 'queue vidée'}")
     elif args.cmd == "remove":
         ok = remove(args.id)

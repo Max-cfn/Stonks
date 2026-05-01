@@ -28,14 +28,17 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-      - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+      # Ubuntu 24 = PEP 668 (externally-managed). On crée un vrai venv au lieu de --system.
+      - name: Create venv & install dev deps
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
       - name: Ruff check
-        run: ruff check src/ tests/
+        run: .venv/bin/ruff check src/ tests/
       - name: Ruff format check
-        run: ruff format --check src/ tests/
+        run: .venv/bin/ruff format --check src/ tests/
       - name: Mypy strict
-        run: mypy src/ --strict
+        run: .venv/bin/mypy src/ --strict
 
   test:
     runs-on: ubuntu-24.04
@@ -76,10 +79,17 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-      - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+      - name: Create venv & install dev deps
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
       - name: Run tests with coverage
-        run: pytest tests/ -v --cov=stonks_backend --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+        run: |
+          .venv/bin/pytest tests/ -v \
+            --cov=stonks_backend \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=80
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:

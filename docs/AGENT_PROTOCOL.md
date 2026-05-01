@@ -247,6 +247,137 @@ Ou plus simple : ouvre l'UI et regarde successivement **📜 Logs**, **📊 Mét
 
 ---
 
+
+
+## 🤖 Mode "all rights" — Briefs 24/7 sans supervision
+
+Quand tu pars longtemps et que tu veux que l'orchestrateur tranche seul,
+configure une **policy d'auto-approbation** + une **queue séquentielle**.
+
+### Étape 1 — Choisir un niveau de confiance
+
+Dans `/opt/stonks/.env`, mets :
+
+```bash
+STONKS_AUTOAPPROVE_LEVEL=conservative   # ou moderate, ou yolo
+STONKS_AUTOAPPROVE_BUDGET_LIMIT_USD=5.0
+```
+
+| Niveau | Auto-approuve | Bloque toujours |
+|---|---|---|
+| `off` (défaut) | rien | tout passe par toi |
+| `conservative` | lectures, écritures sandbox `/opt/stonks/`, `uv/pnpm install`, `git branch/commit`, `pytest/ruff`, `gitnexus index`, `docker compose up/down` | push sur main, suppression DB, force push, secrets, réseau externe |
+| `moderate` | conservative + `git push agent/*`, `gh pr create`, `alembic upgrade`, appels LLM ≤ $5 | hard-blocks (force push main, drop DB…) |
+| `yolo` | **TOUT** | uniquement les hard-blocks listés ci-dessous |
+
+**Hard-blocks (toujours refusés, même en yolo) :**
+- `force push` vers main / master / release
+- `rm -rf` hors `/opt/stonks/`
+- `drop database`, `truncate table`, `DELETE FROM ... sans WHERE`
+- `chmod 777`, `chown root`
+- `vault token revoke`, `vault secrets disable`
+- `sudo rm/dd/mkfs/fdisk`
+- `docker rm -f`, `docker volume rm`, `docker system prune`
+- modifications de `/etc/passwd`, `/etc/sudoers`, `/etc/shadow`
+
+**Recommandation :** pour la première grosse mission de nuit, prends
+`conservative`. Tu peux passer en `moderate` ou `yolo` plus tard quand tu
+auras vu comment l'orchestrateur se comporte.
+
+### Étape 2 — Mettre tes briefs en queue
+
+```bash
+ssh max@serveurmax
+cd /opt/stonks
+
+# Ajoute les briefs dans l'ordre où tu veux qu'ils s'exécutent
+task queue:add -- docs/briefs/2026-04-29_phase2-1-foundations.md
+task queue:add -- docs/briefs/2026-05-01_phase2-2-cashflow.md
+task queue:add -- docs/briefs/2026-05-02_phase2-3-portfolio.md
+
+# Vérifie
+task queue:list
+#   ⏸ [queued ] 20260430_220000_phase2-1   →  docs/briefs/...
+#   ⏸ [queued ] 20260430_220015_phase2-2   →  docs/briefs/...
+#   ⏸ [queued ] 20260430_220030_phase2-3   →  docs/briefs/...
+```
+
+### Étape 3 — Démarrer le runner
+
+```bash
+task queue:start          # service systemd, daemon, survit SSH disconnect
+# ou pour foreground :
+task queue:run            # bloquant, dans ton SSH
+```
+
+Dans les 2 cas, le runner :
+1. prend le 1er item `queued`
+2. lance `python -m stonks_core.orchestrator.main autonomous --brief <chemin>`
+3. attend la fin du sous-process
+4. si exit_code = 0 → marque `done` et passe au suivant
+5. si exit_code ≠ 0 et `stop_on_failure=True` → marque les suivants `skipped` et s'arrête
+6. si `stop_on_failure=False` → continue malgré l'échec
+
+### Étape 4 — Surveiller à distance
+
+```bash
+# Depuis ton mobile en SSH
+task queue:list           # snapshot
+task queue:logs           # tail live (journalctl -f)
+task agents:tail          # 20 dernières actions de l'orchestrateur
+task ui:status            # UI joignable ?
+```
+
+Ou via l'UI Streamlit (📜 Logs et 📊 Métriques en auto-refresh).
+
+### Étape 5 — Ce qui se passe au matin
+
+```bash
+task queue:list
+#   ✅ [done   ] 20260430_220000_phase2-1   →  ...
+#   ✅ [done   ] 20260430_220015_phase2-2   →  ...
+#   ▶️ [running] 20260430_220030_phase2-3   →  ...
+```
+
+Tu vas sur https://github.com/Max-cfn/Stonks/pulls : tu vois les PRs ouvertes, tu les valides à la main (le merge sur main reste **toujours** manuel).
+
+### Stack complète pour autonomie totale
+
+```bash
+# 1. Une fois (config persistante)
+sudo task ui:install                                                        # UI en daemon
+echo "STONKS_AUTOAPPROVE_LEVEL=conservative" >> .env
+sudo systemctl restart stonks-ui                                            # recharge la config
+
+# 2. Quand tu pars pour 12-24h
+task queue:add -- docs/briefs/2026-04-29_phase2-1-foundations.md
+task queue:add -- docs/briefs/2026-05-01_phase2-2-cashflow.md
+task queue:start
+
+# 3. Au retour
+task queue:list
+gh pr list --repo Max-cfn/Stonks
+```
+
+### Audit trail
+
+**Toute** auto-approbation est tracée dans `execution_log.txt` avec :
+- l'`action` = `approval_auto`
+- la `rule_matched` qui a déclenché l'auto-OK
+- le `policy_level` au moment de la décision
+
+Recherche les auto-approbations d'une nuit :
+```bash
+grep '"action":"approval_auto"' execution_log.txt | tail -50
+```
+
+Recherche les hard-blocks (l'orchestrateur a tenté un truc dangereux) :
+```bash
+grep '"action":"approval_hard_blocked"' execution_log.txt
+```
+
+---
+
 ## Surveillance pendant qu'il bosse
 
 ```bash

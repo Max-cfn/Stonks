@@ -234,15 +234,65 @@ tasks:
     cmds:
       - systemctl list-units 'stonks-brief@*.service' --no-pager
 
+  # ─── Queue séquentielle de briefs ────────────────────────────────────
+  # Permet d'enchaîner plusieurs briefs sans intervention.
+  # Combine avec STONKS_AUTOAPPROVE_LEVEL pour une autonomie totale.
+  queue:add:
+    desc: "Ajoute un brief en queue. Usage : task queue:add -- docs/briefs/phase-2-1.md"
+    cmds:
+      - 'test -n "{{.CLI_ARGS}}" || (echo "❌ Usage: task queue:add -- docs/briefs/<nom>.md" && exit 1)'
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.queue add {{.CLI_ARGS}}"
+
+  queue:list:
+    desc: "Liste l'état de la queue (queued / running / done / failed / skipped)"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.queue list"
+
+  queue:run:
+    desc: "Processe la queue en foreground (bloquant). Pour daemon, utiliser queue:start"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.queue run"
+
+  queue:start:
+    desc: "Démarre le service systemd qui processe la queue en daemon"
+    cmds:
+      - sudo systemctl start stonks-queue.service
+      - 'echo "✅ queue runner démarré. Logs - task queue:logs"'
+
+  queue:stop:
+    desc: "Arrête le runner de queue (laisse les briefs en queued intacts)"
+    cmds:
+      - sudo systemctl stop stonks-queue.service
+
+  queue:status:
+    desc: "État du service queue"
+    cmds:
+      - systemctl status stonks-queue.service --no-pager -l | head -15
+
+  queue:logs:
+    desc: "Logs live du queue runner (journalctl -f)"
+    cmds:
+      - journalctl -u stonks-queue.service -f -n 50
+
+  queue:clear:
+    desc: "Vide la queue (TOUT, y compris running). Usage : task queue:clear"
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.queue clear"
+
+  queue:clear:done:
+    desc: "Vide seulement les items terminés (done/failed/skipped). Garde queued/running."
+    cmds:
+      - "{{.AGENTS_VENV}}/bin/python -m stonks_core.queue clear --only-done"
+
   # ─── Stack Docker ────────────────────────────────────────────────────
   stack:up:
     desc: "Lance toute la stack via docker-compose (postgres, vault, redis, gitnexus, UI)"
     cmds:
       - docker compose -f infra/compose/docker-compose.yml up -d
-      - echo "✅ Stack lancée."
-      - echo "   Postgres : localhost:5432 (stonks/stonks_dev/stonks_dev)"
-      - echo "   Vault    : http://localhost:8200 (token: dev-token)"
-      - echo "   UI       : http://localhost:8501"
+      - 'echo "✅ Stack lancée."'
+      - 'echo "   Postgres - localhost:5432 (stonks/stonks_dev/stonks_dev)"'
+      - 'echo "   Vault    - http://localhost:8200 (token: dev-token)"'
+      - 'echo "   UI       - http://localhost:8501"'
 
   stack:down:
     desc: "Arrête la stack"

@@ -23,6 +23,7 @@ from langchain_core.tools import tool
 
 from ..journal import log_event
 from ..orchestrator.config import get_settings
+from . import autoapprove
 
 ApprovalStatus = Literal["pending", "approved", "rejected", "timeout"]
 
@@ -127,6 +128,47 @@ def request_human_approval(
         input={"reason": reason, "req_id": req_id, "timeout_minutes": timeout_minutes},
         human_intervention=True,
     )
+
+    # ─── Policy auto-approve ───────────────────────────────────────────
+    # Consulte la policy AVANT de bloquer. Si elle dit oui, on auto-approuve
+    # immédiatement (avec audit) et on retourne. Sinon comportement normal :
+    # on attend l'humain.
+    decision = autoapprove.evaluate(
+        reason=reason,
+        payload=payload or {},
+        cost_estimate_usd=float((payload or {}).get("cost_estimate_usd") or 0.0),
+    )
+    if decision.auto_approved:
+        data["status"] = "approved"
+        data["responded_at"] = datetime.now(UTC).isoformat()
+        data["responder"] = f"policy:{autoapprove.get_policy().level}"
+        data["response_comment"] = decision.reason
+        data["auto_approved"] = True
+        data["rule_matched"] = decision.rule_matched
+        _write_request(req_id, data)
+        log_event(
+            agent="orchestrator",
+            phase="ad_hoc",
+            action="approval_auto",
+            tool="request_human_approval",
+            input=autoapprove.audit_record(req_id, decision, reason, payload or {}),
+            output_summary=f"req={req_id} AUTO-APPROVED rule={decision.rule_matched}",
+            human_intervention=False,
+        )
+        return f"approved::{decision.reason}"
+    elif decision.reason.startswith("matches ALWAYS_BLOCK"):
+        # Hard block : on ne peut pas auto-approuver, mais on le note dans
+        # le log pour que l'humain comprenne pourquoi cette demande a été
+        # forcée à passer par lui.
+        log_event(
+            agent="orchestrator",
+            phase="ad_hoc",
+            action="approval_hard_blocked",
+            tool="request_human_approval",
+            input=autoapprove.audit_record(req_id, decision, reason, payload or {}),
+            output_summary=f"req={req_id} hit ALWAYS_BLOCK; humain requis",
+            human_intervention=True,
+        )
 
     deadline = time.time() + timeout_minutes * 60
     while time.time() < deadline:

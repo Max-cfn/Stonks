@@ -44,8 +44,10 @@ always_block:
 budget_limit_usd: 5.0
 ```
 """
+
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -138,11 +140,14 @@ _READ_ONLY_RULES = [
     Rule(tool="gitnexus_query"),
     Rule(tool="gitnexus_context"),
     Rule(tool="gitnexus_impact"),
-    Rule(action_pattern=r"^(ls|cat|head|tail|grep|find|wc|stat|file|du|df|free|ps|whoami|pwd|env|which|date|uptime)\b"),
+    Rule(
+        action_pattern=r"^(ls|cat|head|tail|grep|find|wc|stat|file|du|df|free|ps|whoami|pwd|env|which|date|uptime)\b"
+    ),
 ]
 
 # Règles sandbox local (conservative)
-_SANDBOX_LOCAL_RULES = _READ_ONLY_RULES + [
+_SANDBOX_LOCAL_RULES = [
+    *_READ_ONLY_RULES,
     Rule(tool="file_write"),  # écriture dans /opt/stonks (déjà sandboxée)
     Rule(tool="file_append"),
     Rule(tool="gitnexus_index"),
@@ -179,7 +184,7 @@ def _make_preset(level: AutoApproveLevel) -> Policy:
     if level == "moderate":
         return Policy(
             level="moderate",
-            auto_approve=list(_SANDBOX_LOCAL_RULES) + list(_MODERATE_EXTRA_RULES),
+            auto_approve=[*_SANDBOX_LOCAL_RULES, *_MODERATE_EXTRA_RULES],
         )
     if level == "yolo":
         # Tout passe sauf ALWAYS_BLOCK_PATTERNS
@@ -237,10 +242,8 @@ def get_policy(force_reload: bool = False) -> Policy:
 
     budget = os.environ.get("STONKS_AUTOAPPROVE_BUDGET_LIMIT_USD")
     if budget:
-        try:
+        with contextlib.suppress(ValueError):
             policy.budget_limit_usd = float(budget)
-        except ValueError:
-            pass
 
     _cached_policy = policy
     return policy

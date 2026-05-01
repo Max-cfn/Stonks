@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -42,7 +42,9 @@ async def test_store_happy_path(repo: RefreshTokenRepository, mock_redis: AsyncM
 
 
 @pytest.mark.asyncio
-async def test_store_past_expiry_raises(repo: RefreshTokenRepository, mock_redis: AsyncMock) -> None:
+async def test_store_past_expiry_raises(
+    repo: RefreshTokenRepository, mock_redis: AsyncMock
+) -> None:
     """store with expires_at_ts in the past should raise ValueError."""
     user_id = uuid4()
     token_hash = "expiredhash"
@@ -103,10 +105,14 @@ async def test_is_valid_false(repo: RefreshTokenRepository, mock_redis: AsyncMoc
 
 
 @pytest.mark.asyncio
-async def test_revoke_all_deletes_matching_keys(repo: RefreshTokenRepository, mock_redis: AsyncMock) -> None:
+async def test_revoke_all_deletes_matching_keys(
+    repo: RefreshTokenRepository, mock_redis: AsyncMock
+) -> None:
     """revoke_all uses SCAN to find and delete all keys for user."""
     user_id = uuid4()
-    mock_redis.scan = AsyncMock(return_value=(0, [f"stonks:refresh:{user_id}:h1", f"stonks:refresh:{user_id}:h2"]))
+    mock_redis.scan = AsyncMock(
+        return_value=(0, [f"stonks:refresh:{user_id}:h1", f"stonks:refresh:{user_id}:h2"])
+    )
     mock_redis.delete = AsyncMock(return_value=2)
 
     await repo.revoke_all(user_id)

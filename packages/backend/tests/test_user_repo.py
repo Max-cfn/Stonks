@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -45,7 +45,9 @@ def sample_user_model(sample_user: User) -> UserModel:
 
 
 @pytest.mark.asyncio
-async def test_get_by_id_found(repo: UserRepository, mock_session: AsyncMock, sample_user_model: UserModel) -> None:
+async def test_get_by_id_found(
+    repo: UserRepository, mock_session: AsyncMock, sample_user_model: UserModel
+) -> None:
     """Returns User when model exists."""
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = sample_user_model
@@ -71,7 +73,9 @@ async def test_get_by_id_not_found(repo: UserRepository, mock_session: AsyncMock
 
 
 @pytest.mark.asyncio
-async def test_get_by_email_found(repo: UserRepository, mock_session: AsyncMock, sample_user_model: UserModel) -> None:
+async def test_get_by_email_found(
+    repo: UserRepository, mock_session: AsyncMock, sample_user_model: UserModel
+) -> None:
     """Returns User when email matches."""
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = sample_user_model
@@ -97,7 +101,9 @@ async def test_get_by_email_not_found(repo: UserRepository, mock_session: AsyncM
 
 
 @pytest.mark.asyncio
-async def test_save_new_user(repo: UserRepository, mock_session: AsyncMock, sample_user: User) -> None:
+async def test_save_new_user(
+    repo: UserRepository, mock_session: AsyncMock, sample_user: User
+) -> None:
     """save calls merge + flush."""
     mock_session.merge = AsyncMock()
     mock_session.flush = AsyncMock()
@@ -108,7 +114,9 @@ async def test_save_new_user(repo: UserRepository, mock_session: AsyncMock, samp
 
 
 @pytest.mark.asyncio
-async def test_save_existing_user(repo: UserRepository, mock_session: AsyncMock, sample_user: User) -> None:
+async def test_save_existing_user(
+    repo: UserRepository, mock_session: AsyncMock, sample_user: User
+) -> None:
     """save updates existing user (merge + flush)."""
     mock_session.merge = AsyncMock()
     mock_session.flush = AsyncMock()

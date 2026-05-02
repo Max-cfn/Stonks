@@ -6,14 +6,13 @@ Calls DeepSeek V4 Flash with low cost (~$0.0002/call) for structured classificat
 
 from __future__ import annotations
 
-import json
 import logging
-from uuid import UUID
+from typing import TYPE_CHECKING
 
 import httpx
 
 from stonks_backend.application.ports.cashflow import CategorizationPort
-from stonks_backend.domain.cashflow.category import Category, CategoryGroup
+from stonks_backend.domain.cashflow.category import Category
 from stonks_backend.domain.cashflow.transaction_entity import Transaction
 
 if TYPE_CHECKING:

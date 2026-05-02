@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from uuid import UUID
 
 from stonks_backend.application.ports.cashflow import BankConnectorPort, CashflowRepositoryPort

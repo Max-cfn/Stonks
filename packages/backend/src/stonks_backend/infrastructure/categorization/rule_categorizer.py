@@ -8,8 +8,9 @@ FR/EN transaction labels.
 
 from __future__ import annotations
 
-import re
 import logging
+import re
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from stonks_backend.application.ports.cashflow import CategorizationPort
@@ -145,7 +146,7 @@ class RuleBasedCategorizer(CategorizationPort):
                 if cat is not None:
                     return cat
 
-        for field, pattern, group, name, icon, color in _BUILTIN_PATTERNS:
+        for field, pattern, group, name, _icon, _color in _BUILTIN_PATTERNS:
             text_val = self._get_field(transaction, field)
             if text_val and self._match(pattern, text_val):
                 cats = await self._repo.get_default_categories()

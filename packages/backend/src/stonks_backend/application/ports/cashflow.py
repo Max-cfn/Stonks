@@ -12,7 +12,6 @@ from uuid import UUID
 from stonks_backend.domain.cashflow.account import Account
 from stonks_backend.domain.cashflow.balance import BalanceSnapshot
 from stonks_backend.domain.cashflow.category import Category
-from stonks_backend.domain.cashflow.money import Money
 from stonks_backend.domain.cashflow.transaction_entity import Transaction
 
 

@@ -15,19 +15,13 @@ from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from stonks_backend.application.ports.cashflow import CashflowRepositoryPort
-from stonks_backend.application.use_cases.cashflow.categorize_batch import CategorizeBatch
 from stonks_backend.application.use_cases.cashflow.connect_bank import ConnectBankAccount
 from stonks_backend.application.use_cases.cashflow.get_summary import (
     GetCashflowSummary,
-    MonthlyCashflowSummary,
 )
 from stonks_backend.application.use_cases.cashflow.sync_transactions import SyncTransactions
 from stonks_backend.domain.user import User
 from stonks_backend.infrastructure.bank_connectors import EnableBankingAdapter
-from stonks_backend.infrastructure.categorization import (
-    LLMCategorizer,
-    RuleBasedCategorizer,
-)
 from stonks_backend.infrastructure.config import get_settings
 from stonks_backend.infrastructure.database import get_session
 from stonks_backend.infrastructure.persistence.cashflow_repo import CashflowSqlRepository

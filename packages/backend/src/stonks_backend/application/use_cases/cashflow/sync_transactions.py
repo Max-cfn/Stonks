@@ -50,9 +50,7 @@ class SyncTransactions:
             raise SyncTransactionsError(f"Account {account_id} not found")
 
         if account.status != AccountStatus.ACTIVE:
-            raise SyncTransactionsError(
-                f"Cannot sync account with status {account.status}"
-            )
+            raise SyncTransactionsError(f"Cannot sync account with status {account.status}")
 
         # Determine sync window
         since = account.last_synced_at
@@ -84,7 +82,9 @@ class SyncTransactions:
 
         logger.info(
             "Synced transactions for account %s: %d new out of %d fetched",
-            account_id, new_count, len(transactions),
+            account_id,
+            new_count,
+            len(transactions),
         )
 
         return SyncResult(new=new_count, total=len(transactions))

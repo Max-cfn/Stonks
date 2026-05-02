@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 # ── Auth ──────────────────────────────────────────────────────────
 
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
@@ -38,6 +39,7 @@ class ErrorResponse(BaseModel):
 
 
 # ── Cashflow ──────────────────────────────────────────────────────
+
 
 class ConnectResponse(BaseModel):
     authorization_url: str

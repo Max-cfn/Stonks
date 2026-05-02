@@ -52,18 +52,16 @@ class CategorizeBatch:
         rule_results = await self._rules.categorize_batch(transactions)
 
         # Identify unmatched indices
-        unmatched = [
-            (idx, tx)
-            for idx, tx in enumerate(transactions)
-            if idx not in rule_results
-        ]
+        unmatched = [(idx, tx) for idx, tx in enumerate(transactions) if idx not in rule_results]
 
         # Phase 2: LLM fallback for unmatched
         llm_results: dict[int, Category] = {}
         if unmatched:
             logger.info(
                 "Rule categorizer matched %d/%d, invoking LLM for %d remaining",
-                len(rule_results), len(transactions), len(unmatched),
+                len(rule_results),
+                len(transactions),
+                len(unmatched),
             )
             unmatched_txs = [tx for _, tx in unmatched]
             llm_results = await self._llm.categorize_batch(unmatched_txs)
@@ -93,9 +91,7 @@ class CategorizeBatch:
 
         return all_results
 
-    async def categorize_and_persist(
-        self, transactions: list[Transaction]
-    ) -> int:
+    async def categorize_and_persist(self, transactions: list[Transaction]) -> int:
         """Categorize transactions and persist category assignments.
 
         Returns:

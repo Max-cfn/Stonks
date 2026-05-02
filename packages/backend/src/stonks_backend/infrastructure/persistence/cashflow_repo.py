@@ -62,13 +62,9 @@ class CashflowSqlRepository(CashflowRepositoryPort):
 
     async def save_account(self, account: Account) -> None:
         """Insert or update a cashflow account. Encrypts IBAN and holder_name."""
-        iban_encrypted = (
-            self._encrypt_str(account.iban.value) if account.iban is not None else None
-        )
+        iban_encrypted = self._encrypt_str(account.iban.value) if account.iban is not None else None
         holder_encrypted = (
-            self._encrypt_str(account.holder_name)
-            if account.holder_name is not None
-            else None
+            self._encrypt_str(account.holder_name) if account.holder_name is not None else None
         )
 
         balance_amt = account.current_balance.amount if account.current_balance else None
@@ -169,15 +165,10 @@ class CashflowSqlRepository(CashflowRepositoryPort):
 
         return result.rowcount if result.rowcount else 0
 
-    async def update_transaction_raw_label(
-        self, tx_id: TransactionId, raw_label: str
-    ) -> None:
+    async def update_transaction_raw_label(self, tx_id: TransactionId, raw_label: str) -> None:
         """Update the encrypted raw_label for a transaction (post-insert)."""
         encrypted = self._encrypt_str(raw_label)
-        stmt = text(
-            "UPDATE cashflow_transactions SET raw_label_encrypted = :enc "
-            "WHERE id = :tx_id"
-        )
+        stmt = text("UPDATE cashflow_transactions SET raw_label_encrypted = :enc WHERE id = :tx_id")
         await self._session.execute(stmt, {"enc": encrypted, "tx_id": tx_id.value})
 
     async def get_transactions(
@@ -200,10 +191,7 @@ class CashflowSqlRepository(CashflowRepositoryPort):
         stmt = stmt.limit(limit).offset(offset)
 
         result = await self._session.execute(stmt)
-        return [
-            self._model_to_transaction(m)
-            for m in result.scalars().all()
-        ]
+        return [self._model_to_transaction(m) for m in result.scalars().all()]
 
     async def get_transaction_count(
         self,
@@ -214,8 +202,10 @@ class CashflowSqlRepository(CashflowRepositoryPort):
         """Count transactions for an account, optionally filtered by date."""
         from sqlalchemy import func
 
-        stmt = select(func.count()).select_from(CashflowTransactionModel).where(
-            CashflowTransactionModel.account_id == account_id
+        stmt = (
+            select(func.count())
+            .select_from(CashflowTransactionModel)
+            .where(CashflowTransactionModel.account_id == account_id)
         )
         if since is not None:
             stmt = stmt.where(CashflowTransactionModel.created_at >= since)
@@ -287,17 +277,14 @@ class CashflowSqlRepository(CashflowRepositoryPort):
 
     async def get_default_categories(self) -> list[DomainCategory]:
         """Retrieve all system default categories (user_id IS NULL)."""
-        stmt = select(CashflowCategoryModel).where(
-            CashflowCategoryModel.is_system.is_(True)
-        )
+        stmt = select(CashflowCategoryModel).where(CashflowCategoryModel.is_system.is_(True))
         result = await self._session.execute(stmt)
         return [self._model_to_category(m) for m in result.scalars().all()]
 
     async def get_categories_by_user(self, user_id: UUID) -> list[DomainCategory]:
         """Retrieve all system + user-defined categories for a user."""
         stmt = select(CashflowCategoryModel).where(
-            (CashflowCategoryModel.user_id == user_id)
-            | (CashflowCategoryModel.is_system.is_(True))
+            (CashflowCategoryModel.user_id == user_id) | (CashflowCategoryModel.is_system.is_(True))
         )
         result = await self._session.execute(stmt)
         return [self._model_to_category(m) for m in result.scalars().all()]
@@ -321,10 +308,7 @@ class CashflowSqlRepository(CashflowRepositoryPort):
 
         stmt = select(CategorizationRuleModel).order_by(CategorizationRuleModel.priority.desc())
         result = await self._session.execute(stmt)
-        return [
-            (r.field, r.pattern, r.priority, r.category_id)
-            for r in result.scalars().all()
-        ]
+        return [(r.field, r.pattern, r.priority, r.category_id) for r in result.scalars().all()]
 
     # ── Model-to-Domain mappers ────────────────────────────────────
 

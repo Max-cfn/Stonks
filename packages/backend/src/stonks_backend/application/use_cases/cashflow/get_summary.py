@@ -59,7 +59,9 @@ class GetCashflowSummary:
         self._repo = cashflow_repo
 
     async def compute(
-        self, user_id: UUID, period: str = "month",
+        self,
+        user_id: UUID,
+        period: str = "month",
     ) -> MonthlyCashflowSummary:
         """Compute the cashflow summary for the current period.
 
@@ -132,15 +134,17 @@ class GetCashflowSummary:
         for cat_id, (total_amt, count) in category_totals.items():
             cat = await self._repo.get_category(cat_id)
             if cat is not None:
-                cat_summaries.append(CategorySummary(
-                    category_id=cat.id,
-                    category_name=cat.name,
-                    category_icon=cat.icon,
-                    category_group=cat.group.value,
-                    total_amount=total_amt,
-                    currency=currency,
-                    transaction_count=count,
-                ))
+                cat_summaries.append(
+                    CategorySummary(
+                        category_id=cat.id,
+                        category_name=cat.name,
+                        category_icon=cat.icon,
+                        category_group=cat.group.value,
+                        total_amount=total_amt,
+                        currency=currency,
+                        transaction_count=count,
+                    )
+                )
 
         # Sort: largest absolute amount first
         cat_summaries.sort(key=lambda c: abs(c.total_amount), reverse=True)

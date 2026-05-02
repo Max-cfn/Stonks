@@ -108,9 +108,7 @@ class CashflowTransactionModel(Base):
         "CashflowAccountModel", back_populates="transactions"
     )
 
-    __table_args__ = (
-        UniqueConstraint("account_id", "bank_tx_id", name="uq_account_bank_tx"),
-    )
+    __table_args__ = (UniqueConstraint("account_id", "bank_tx_id", name="uq_account_bank_tx"),)
 
     def __repr__(self) -> str:
         return f"<CashflowTransaction id={self.id} amount={self.amount} {self.currency}>"
@@ -135,9 +133,7 @@ class CashflowCategoryModel(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=text("now()")
     )
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_user_category_name"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_user_category_name"),)
 
     def __repr__(self) -> str:
         return f"<CashflowCategory id={self.id} name={self.name}>"
@@ -162,9 +158,7 @@ class CategorizationRuleModel(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=text("now()")
     )
 
-    __table_args__ = (
-        UniqueConstraint("category_id", "pattern", name="uq_category_pattern"),
-    )
+    __table_args__ = (UniqueConstraint("category_id", "pattern", name="uq_category_pattern"),)
 
     def __repr__(self) -> str:
         return f"<CategorizationRule id={self.id} field={self.field} pattern={self.pattern}>"
@@ -182,9 +176,7 @@ class CashflowBalanceSnapshotModel(Base):
         nullable=False,
         index=True,
     )
-    balance_amount: Mapped[Decimal] = mapped_column(
-        Numeric(precision=18, scale=4), nullable=False
-    )
+    balance_amount: Mapped[Decimal] = mapped_column(Numeric(precision=18, scale=4), nullable=False)
     balance_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     source: Mapped[str] = mapped_column(String(16), nullable=False, server_default="psd2")

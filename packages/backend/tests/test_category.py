@@ -42,8 +42,17 @@ class TestCategory:
 
 class TestCategoryGroup:
     def test_all_groups(self):
-        expected = {"income", "housing", "food", "transport", "health",
-                     "shopping", "entertainment", "financial", "other"}
+        expected = {
+            "income",
+            "housing",
+            "food",
+            "transport",
+            "health",
+            "shopping",
+            "entertainment",
+            "financial",
+            "other",
+        }
         assert {g.value for g in CategoryGroup} == expected
 
     def test_group_string_values(self):

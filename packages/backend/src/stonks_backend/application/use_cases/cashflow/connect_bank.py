@@ -38,9 +38,7 @@ class ConnectBankAccount:
         """
         return await self._connector.get_authorization_url(user_id, redirect_uri)
 
-    async def handle_callback(
-        self, user_id: UUID, code: str, redirect_uri: str
-    ) -> list[Account]:
+    async def handle_callback(self, user_id: UUID, code: str, redirect_uri: str) -> list[Account]:
         """Exchange OAuth code for token, fetch accounts, and persist them.
 
         Args:

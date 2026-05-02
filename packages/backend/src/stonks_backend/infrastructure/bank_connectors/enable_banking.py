@@ -71,9 +71,7 @@ class EnableBankingAdapter(BankConnectorPort):
         self._client_id = client_id
         self._client_secret = client_secret
         self._sandbox = sandbox
-        self._api_base = (
-            "https://api.sandbox.enablebanking.com" if sandbox else ENABLE_BANKING_API
-        )
+        self._api_base = "https://api.sandbox.enablebanking.com" if sandbox else ENABLE_BANKING_API
         self._auth_base = (
             "https://auth.sandbox.enablebanking.com" if sandbox else ENABLE_BANKING_AUTH
         )
@@ -101,11 +99,14 @@ class EnableBankingAdapter(BankConnectorPort):
 
         # Store code_verifier and state in Vault
         vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
-        await self._vault.write_secret(vault_path, {
-            "code_verifier": code_verifier,
-            "state": state,
-            "redirect_uri": redirect_uri,
-        })
+        await self._vault.write_secret(
+            vault_path,
+            {
+                "code_verifier": code_verifier,
+                "state": state,
+                "redirect_uri": redirect_uri,
+            },
+        )
 
         from urllib.parse import urlencode
 
@@ -120,9 +121,7 @@ class EnableBankingAdapter(BankConnectorPort):
         }
         return f"{self._auth_base}/oauth/authorize?{urlencode(params)}"
 
-    async def exchange_code_for_token(
-        self, user_id: UUID, code: str, redirect_uri: str
-    ) -> None:
+    async def exchange_code_for_token(self, user_id: UUID, code: str, redirect_uri: str) -> None:
         """Exchange authorization code for access/refresh tokens, store in Vault."""
         vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
         code_verifier = await self._vault.read_secret(vault_path, "code_verifier")
@@ -146,9 +145,7 @@ class EnableBankingAdapter(BankConnectorPort):
             body["client_secret"] = self._client_secret
 
         try:
-            response = await self._http.post(
-                f"{self._auth_base}/oauth/token", data=body
-            )
+            response = await self._http.post(f"{self._auth_base}/oauth/token", data=body)
             response.raise_for_status()
             token_data = response.json()
         except httpx.HTTPStatusError as exc:
@@ -160,12 +157,15 @@ class EnableBankingAdapter(BankConnectorPort):
         expires_at = int(now.timestamp()) + token_data.get("expires_in", 3600)
 
         vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
-        await self._vault.write_secret(vault_path, {
-            "access_token": token_data["access_token"],
-            "refresh_token": token_data.get("refresh_token", ""),
-            "expires_at": str(expires_at),
-            "token_type": token_data.get("token_type", "Bearer"),
-        })
+        await self._vault.write_secret(
+            vault_path,
+            {
+                "access_token": token_data["access_token"],
+                "refresh_token": token_data.get("refresh_token", ""),
+                "expires_at": str(expires_at),
+                "token_type": token_data.get("token_type", "Bearer"),
+            },
+        )
 
     async def _get_valid_access_token(self, user_id: UUID) -> str:
         """Return a valid access token, refreshing if expired."""
@@ -263,9 +263,7 @@ class EnableBankingAdapter(BankConnectorPort):
                 bank_id=item.get("bankId", ""),
                 iban=iban,
                 holder_name=item.get("ownerName"),
-                account_type=self._map_account_type(
-                    item.get("accountType", {}).get("type")
-                ),
+                account_type=self._map_account_type(item.get("accountType", {}).get("type")),
                 account_name=item.get("name") or item.get("product", "Compte"),
                 currency=item.get("currency", "EUR"),
                 current_balance=current_balance,
@@ -324,13 +322,15 @@ class EnableBankingAdapter(BankConnectorPort):
                 continue
             try:
                 money = Money(str(bal["amount"]), bal["currency"])
-                snapshots.append(BalanceSnapshot(
-                    account_id=UUID(item["accountId"]),
-                    balance=money,
-                    currency=bal["currency"],
-                    timestamp=now,
-                    source="psd2",
-                ))
+                snapshots.append(
+                    BalanceSnapshot(
+                        account_id=UUID(item["accountId"]),
+                        balance=money,
+                        currency=bal["currency"],
+                        timestamp=now,
+                        source="psd2",
+                    )
+                )
             except (KeyError, ValueError, TypeError):
                 continue
 
@@ -345,17 +345,16 @@ class EnableBankingAdapter(BankConnectorPort):
             amount_data.get("currency", "EUR"),
         )
         desc_lines = item.get("remittanceInformationUnstructuredArray", [])
-        description = " ".join(desc_lines) if desc_lines else (
-            item.get("remittanceInformationUnstructured", "")
+        description = (
+            " ".join(desc_lines)
+            if desc_lines
+            else (item.get("remittanceInformationUnstructured", ""))
         )
         creditor = item.get("creditor", {}) or {}
         debtor = item.get("debtor", {}) or {}
 
         return Transaction(
-            id=TransactionId(
-                item.get("transactionId", "")
-                or TransactionId.generate().value
-            ),
+            id=TransactionId(item.get("transactionId", "") or TransactionId.generate().value),
             account_id=account_id,
             bank_tx_id=item.get("entryReference") or item.get("transactionId"),
             amount=amount,

@@ -182,8 +182,24 @@ class TestMoneyParse:
 
 class TestSupportedCurrencies:
     def test_all_major_currencies(self):
-        expected = {"EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "NZD",
-                     "SEK", "NOK", "DKK", "PLN", "CZK", "HUF", "RON", "BGN"}
+        expected = {
+            "EUR",
+            "USD",
+            "GBP",
+            "CHF",
+            "JPY",
+            "CAD",
+            "AUD",
+            "NZD",
+            "SEK",
+            "NOK",
+            "DKK",
+            "PLN",
+            "CZK",
+            "HUF",
+            "RON",
+            "BGN",
+        }
         assert SUPPORTED_CURRENCIES == expected
 
     def test_each_currency_creatable(self):

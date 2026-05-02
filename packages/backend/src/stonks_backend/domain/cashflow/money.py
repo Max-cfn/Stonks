@@ -101,7 +101,6 @@ class Money:
     def is_zero(self) -> bool:
         return self._amount == 0
 
-
     # ── String representation ──────────────────────────────────────
 
     def __repr__(self) -> str:
@@ -189,9 +188,7 @@ class Money:
 
     def _require_same_currency(self, other: Money) -> None:
         if self._currency != other._currency:
-            raise CurrencyMismatchError(
-                f"Cannot operate on {self._currency} and {other._currency}"
-            )
+            raise CurrencyMismatchError(f"Cannot operate on {self._currency} and {other._currency}")
 
     @classmethod
     def parse(cls, raw: str, default_currency: str = "EUR") -> Money:

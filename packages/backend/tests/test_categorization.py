@@ -1,6 +1,7 @@
 """Tests for RuleBasedCategorizer — 50+ patterns covering FR/EN transactions."""
 
 import uuid
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -9,8 +10,6 @@ from stonks_backend.domain.cashflow.transaction_entity import Transaction
 from stonks_backend.infrastructure.categorization.rule_categorizer import (
     RuleBasedCategorizer,
 )
-
-from unittest.mock import AsyncMock
 
 
 @pytest.fixture
@@ -21,36 +20,196 @@ def mock_repo() -> AsyncMock:
     repo = AsyncMock()
     repo.get_rule_categories_map.return_value = []
     system_cats = [
-        Category(name="Salaire", group=CategoryGroup.INCOME, icon="💰", color_hex="#2E7D32", is_system=True),
-        Category(name="Freelance", group=CategoryGroup.INCOME, icon="💻", color_hex="#2E7D32", is_system=True),
-        Category(name="Remboursements", group=CategoryGroup.INCOME, icon="↩️", color_hex="#2E7D32", is_system=True),
-        Category(name="Aides", group=CategoryGroup.INCOME, icon="🤝", color_hex="#2E7D32", is_system=True),
-        Category(name="Loyer", group=CategoryGroup.HOUSING, icon="🏠", color_hex="#E65100", is_system=True),
-        Category(name="Électricité", group=CategoryGroup.HOUSING, icon="⚡", color_hex="#E65100", is_system=True),
-        Category(name="Eau", group=CategoryGroup.HOUSING, icon="💧", color_hex="#E65100", is_system=True),
-        Category(name="Internet", group=CategoryGroup.HOUSING, icon="🌐", color_hex="#E65100", is_system=True),
-        Category(name="Assurance habitation", group=CategoryGroup.HOUSING, icon="🛡️", color_hex="#E65100", is_system=True),
-        Category(name="Courses", group=CategoryGroup.FOOD, icon="🛒", color_hex="#4CAF50", is_system=True),
-        Category(name="Restaurant", group=CategoryGroup.FOOD, icon="🍽️", color_hex="#4CAF50", is_system=True),
-        Category(name="Café", group=CategoryGroup.FOOD, icon="☕", color_hex="#4CAF50", is_system=True),
-        Category(name="Livraison", group=CategoryGroup.FOOD, icon="🛵", color_hex="#4CAF50", is_system=True),
-        Category(name="Essence", group=CategoryGroup.TRANSPORT, icon="⛽", color_hex="#1976D2", is_system=True),
-        Category(name="Transports en commun", group=CategoryGroup.TRANSPORT, icon="🚇", color_hex="#1976D2", is_system=True),
-        Category(name="Parking", group=CategoryGroup.TRANSPORT, icon="🅿️", color_hex="#1976D2", is_system=True),
-        Category(name="Pharmacie", group=CategoryGroup.HEALTH, icon="💊", color_hex="#D32F2F", is_system=True),
-        Category(name="Médecin", group=CategoryGroup.HEALTH, icon="🩺", color_hex="#D32F2F", is_system=True),
-        Category(name="Mutuelle", group=CategoryGroup.HEALTH, icon="🏥", color_hex="#D32F2F", is_system=True),
-        Category(name="Vêtements", group=CategoryGroup.SHOPPING, icon="👕", color_hex="#9C27B0", is_system=True),
-        Category(name="Électronique", group=CategoryGroup.SHOPPING, icon="📱", color_hex="#9C27B0", is_system=True),
-        Category(name="Maison", group=CategoryGroup.SHOPPING, icon="🪴", color_hex="#9C27B0", is_system=True),
-        Category(name="Abonnements", group=CategoryGroup.ENTERTAINMENT, icon="📺", color_hex="#FF5722", is_system=True),
-        Category(name="Loisirs", group=CategoryGroup.ENTERTAINMENT, icon="🎮", color_hex="#FF5722", is_system=True),
-        Category(name="Voyages", group=CategoryGroup.ENTERTAINMENT, icon="✈️", color_hex="#FF5722", is_system=True),
-        Category(name="Sport", group=CategoryGroup.ENTERTAINMENT, icon="🏋️", color_hex="#FF5722", is_system=True),
-        Category(name="Frais bancaires", group=CategoryGroup.FINANCIAL, icon="🏦", color_hex="#607D8B", is_system=True),
-        Category(name="Impôts", group=CategoryGroup.FINANCIAL, icon="📝", color_hex="#607D8B", is_system=True),
-        Category(name="Crédit", group=CategoryGroup.FINANCIAL, icon="💳", color_hex="#607D8B", is_system=True),
-        Category(name="Divers", group=CategoryGroup.OTHER, icon="📦", color_hex="#808080", is_system=True),
+        Category(
+            name="Salaire",
+            group=CategoryGroup.INCOME,
+            icon="💰",
+            color_hex="#2E7D32",
+            is_system=True,
+        ),
+        Category(
+            name="Freelance",
+            group=CategoryGroup.INCOME,
+            icon="💻",
+            color_hex="#2E7D32",
+            is_system=True,
+        ),
+        Category(
+            name="Remboursements",
+            group=CategoryGroup.INCOME,
+            icon="↩️",
+            color_hex="#2E7D32",
+            is_system=True,
+        ),
+        Category(
+            name="Aides", group=CategoryGroup.INCOME, icon="🤝", color_hex="#2E7D32", is_system=True
+        ),
+        Category(
+            name="Loyer",
+            group=CategoryGroup.HOUSING,
+            icon="🏠",
+            color_hex="#E65100",
+            is_system=True,
+        ),
+        Category(
+            name="Électricité",
+            group=CategoryGroup.HOUSING,
+            icon="⚡",
+            color_hex="#E65100",
+            is_system=True,
+        ),
+        Category(
+            name="Eau", group=CategoryGroup.HOUSING, icon="💧", color_hex="#E65100", is_system=True
+        ),
+        Category(
+            name="Internet",
+            group=CategoryGroup.HOUSING,
+            icon="🌐",
+            color_hex="#E65100",
+            is_system=True,
+        ),
+        Category(
+            name="Assurance habitation",
+            group=CategoryGroup.HOUSING,
+            icon="🛡️",
+            color_hex="#E65100",
+            is_system=True,
+        ),
+        Category(
+            name="Courses", group=CategoryGroup.FOOD, icon="🛒", color_hex="#4CAF50", is_system=True
+        ),
+        Category(
+            name="Restaurant",
+            group=CategoryGroup.FOOD,
+            icon="🍽️",
+            color_hex="#4CAF50",
+            is_system=True,
+        ),
+        Category(
+            name="Café", group=CategoryGroup.FOOD, icon="☕", color_hex="#4CAF50", is_system=True
+        ),
+        Category(
+            name="Livraison",
+            group=CategoryGroup.FOOD,
+            icon="🛵",
+            color_hex="#4CAF50",
+            is_system=True,
+        ),
+        Category(
+            name="Essence",
+            group=CategoryGroup.TRANSPORT,
+            icon="⛽",
+            color_hex="#1976D2",
+            is_system=True,
+        ),
+        Category(
+            name="Transports en commun",
+            group=CategoryGroup.TRANSPORT,
+            icon="🚇",
+            color_hex="#1976D2",
+            is_system=True,
+        ),
+        Category(
+            name="Parking",
+            group=CategoryGroup.TRANSPORT,
+            icon="🅿️",
+            color_hex="#1976D2",
+            is_system=True,
+        ),
+        Category(
+            name="Pharmacie",
+            group=CategoryGroup.HEALTH,
+            icon="💊",
+            color_hex="#D32F2F",
+            is_system=True,
+        ),
+        Category(
+            name="Médecin",
+            group=CategoryGroup.HEALTH,
+            icon="🩺",
+            color_hex="#D32F2F",
+            is_system=True,
+        ),
+        Category(
+            name="Mutuelle",
+            group=CategoryGroup.HEALTH,
+            icon="🏥",
+            color_hex="#D32F2F",
+            is_system=True,
+        ),
+        Category(
+            name="Vêtements",
+            group=CategoryGroup.SHOPPING,
+            icon="👕",
+            color_hex="#9C27B0",
+            is_system=True,
+        ),
+        Category(
+            name="Électronique",
+            group=CategoryGroup.SHOPPING,
+            icon="📱",
+            color_hex="#9C27B0",
+            is_system=True,
+        ),
+        Category(
+            name="Maison",
+            group=CategoryGroup.SHOPPING,
+            icon="🪴",
+            color_hex="#9C27B0",
+            is_system=True,
+        ),
+        Category(
+            name="Abonnements",
+            group=CategoryGroup.ENTERTAINMENT,
+            icon="📺",
+            color_hex="#FF5722",
+            is_system=True,
+        ),
+        Category(
+            name="Loisirs",
+            group=CategoryGroup.ENTERTAINMENT,
+            icon="🎮",
+            color_hex="#FF5722",
+            is_system=True,
+        ),
+        Category(
+            name="Voyages",
+            group=CategoryGroup.ENTERTAINMENT,
+            icon="✈️",
+            color_hex="#FF5722",
+            is_system=True,
+        ),
+        Category(
+            name="Sport",
+            group=CategoryGroup.ENTERTAINMENT,
+            icon="🏋️",
+            color_hex="#FF5722",
+            is_system=True,
+        ),
+        Category(
+            name="Frais bancaires",
+            group=CategoryGroup.FINANCIAL,
+            icon="🏦",
+            color_hex="#607D8B",
+            is_system=True,
+        ),
+        Category(
+            name="Impôts",
+            group=CategoryGroup.FINANCIAL,
+            icon="📝",
+            color_hex="#607D8B",
+            is_system=True,
+        ),
+        Category(
+            name="Crédit",
+            group=CategoryGroup.FINANCIAL,
+            icon="💳",
+            color_hex="#607D8B",
+            is_system=True,
+        ),
+        Category(
+            name="Divers", group=CategoryGroup.OTHER, icon="📦", color_hex="#808080", is_system=True
+        ),
     ]
     repo.get_default_categories.return_value = system_cats
     return repo
@@ -61,7 +220,9 @@ def categorizer(mock_repo):
     return RuleBasedCategorizer(mock_repo)
 
 
-def make_tx(description: str, amount_str: str = "-50.00", creditor: str | None = None) -> Transaction:
+def make_tx(
+    description: str, amount_str: str = "-50.00", creditor: str | None = None
+) -> Transaction:
     """Helper to create a test transaction."""
     return Transaction(
         account_id=uuid.uuid4(),
@@ -175,12 +336,16 @@ class TestCategorizationFrench:
         assert cat.name == "Remboursements"
 
     async def test_freelance_payment(self, categorizer):
-        cat = await categorizer.categorize(make_tx("VIREMENT HONORAIRES MISSION DEV", amount_str="+3000.00"))
+        cat = await categorizer.categorize(
+            make_tx("VIREMENT HONORAIRES MISSION DEV", amount_str="+3000.00")
+        )
         assert cat is not None
         assert cat.name == "Freelance"
 
     async def test_caf(self, categorizer):
-        cat = await categorizer.categorize(make_tx("CAF APL VERSEMENT MENSUEL", amount_str="+350.00"))
+        cat = await categorizer.categorize(
+            make_tx("CAF APL VERSEMENT MENSUEL", amount_str="+350.00")
+        )
         assert cat is not None
         assert cat.name == "Aides"
 
@@ -284,9 +449,7 @@ class TestCategorizationEdgeCases:
         assert cat is None
 
     async def test_creditor_name_match(self, categorizer):
-        cat = await categorizer.categorize(
-            make_tx("COLIS", creditor="La Poste")
-        )
+        cat = await categorizer.categorize(make_tx("COLIS", creditor="La Poste"))
         assert cat is not None
 
 

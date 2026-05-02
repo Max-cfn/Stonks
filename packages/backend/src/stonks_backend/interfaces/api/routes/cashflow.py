@@ -47,6 +47,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 # ── Dependencies ──────────────────────────────────────────────────
 
+
 async def get_cashflow_repo(
     session: AsyncSession = Depends(get_session),
 ) -> CashflowRepositoryPort:
@@ -79,6 +80,7 @@ async def get_bank_connector(
 
 
 # ── Bank Connection ───────────────────────────────────────────────
+
 
 @router.post(
     "/banks/connect",
@@ -156,6 +158,7 @@ async def bank_callback(
 
 # ── Accounts ──────────────────────────────────────────────────────
 
+
 @router.get(
     "/accounts",
     response_model=AccountListResponse,
@@ -187,6 +190,7 @@ async def list_accounts(
 
 
 # ── Sync ──────────────────────────────────────────────────────────
+
 
 @router.post(
     "/accounts/{account_id}/sync",
@@ -233,6 +237,7 @@ async def sync_transactions(
 
 
 # ── Transactions ──────────────────────────────────────────────────
+
 
 @router.get(
     "/transactions",
@@ -296,6 +301,7 @@ async def list_transactions(
 
 
 # ── Summary ───────────────────────────────────────────────────────
+
 
 @router.get(
     "/summary",

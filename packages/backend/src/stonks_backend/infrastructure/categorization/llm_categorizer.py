@@ -55,9 +55,7 @@ class LLMCategorizer(CategorizationPort):
         if not categories:
             return None
 
-        category_list = "\n".join(
-            f"- {c.name} (group: {c.group.value})" for c in categories
-        )
+        category_list = "\n".join(f"- {c.name} (group: {c.group.value})" for c in categories)
 
         prompt = (
             "Tu es un assistant de catégorisation financière. "
@@ -106,9 +104,7 @@ class LLMCategorizer(CategorizationPort):
             logger.exception("LLM categorization failed")
             return None
 
-    async def categorize_batch(
-        self, transactions: list[Transaction]
-    ) -> dict[int, Category]:
+    async def categorize_batch(self, transactions: list[Transaction]) -> dict[int, Category]:
         """Categorize a batch sequentially (one LLM call per transaction)."""
         results: dict[int, Category] = {}
         for idx, tx in enumerate(transactions):

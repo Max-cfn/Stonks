@@ -29,9 +29,7 @@ class BankConnectorPort(ABC):
         ...
 
     @abstractmethod
-    async def exchange_code_for_token(
-        self, user_id: UUID, code: str, redirect_uri: str
-    ) -> None:
+    async def exchange_code_for_token(self, user_id: UUID, code: str, redirect_uri: str) -> None:
         """Exchange OAuth authorization code for tokens, store in Vault."""
         ...
 
@@ -42,7 +40,10 @@ class BankConnectorPort(ABC):
 
     @abstractmethod
     async def fetch_transactions(
-        self, user_id: UUID, account_id: UUID, since: datetime | None = None,
+        self,
+        user_id: UUID,
+        account_id: UUID,
+        since: datetime | None = None,
         until: datetime | None = None,
     ) -> list[Transaction]:
         """Fetch transactions for a specific account, optionally in a date range."""
@@ -102,8 +103,12 @@ class CashflowRepositoryPort(ABC):
 
     @abstractmethod
     async def get_transactions(
-        self, account_id: UUID, since: datetime | None = None, until: datetime | None = None,
-        limit: int = 200, offset: int = 0,
+        self,
+        account_id: UUID,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        limit: int = 200,
+        offset: int = 0,
     ) -> list[Transaction]:
         """Fetch paginated transactions for an account, optionally filtered by date range."""
         ...
@@ -115,7 +120,10 @@ class CashflowRepositoryPort(ABC):
 
     @abstractmethod
     async def get_balance_history(
-        self, account_id: UUID, since: datetime, until: datetime,
+        self,
+        account_id: UUID,
+        since: datetime,
+        until: datetime,
     ) -> list[BalanceSnapshot]:
         """Retrieve balance snapshots for an account in a time range."""
         ...

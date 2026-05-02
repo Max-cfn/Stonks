@@ -1,0 +1,7 @@
+{
+  "root": true,
+  "extends": ["expo", "prettier"],
+  "rules": {
+    "import/order": "off"
+  }
+}

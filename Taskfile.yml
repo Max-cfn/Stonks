@@ -351,3 +351,29 @@ tasks:
     desc: "Affiche les tâches disponibles"
     cmds:
       - task --list-all
+
+
+  # ─── Mobile ──────────────────────────────────────────────────────────
+  mobile:start:
+    desc: "Lance Expo Go (dev server)"
+    dir: apps/mobile
+    cmds:
+      - pnpm start
+
+  mobile:test:
+    desc: "Lance les tests mobile"
+    dir: apps/mobile
+    cmds:
+      - pnpm test
+
+  mobile:typecheck:
+    desc: "Type-check l'app mobile"
+    dir: apps/mobile
+    cmds:
+      - pnpm typecheck
+
+  mobile:lint:
+    desc: "Lint l'app mobile"
+    dir: apps/mobile
+    cmds:
+      - pnpm lint

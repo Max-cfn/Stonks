@@ -18,7 +18,6 @@ class MoneyParseError(ValueError):
     """Raised when a string cannot be parsed as Money."""
 
 
-# Minimal set of ISO 4217 codes we support
 SUPPORTED_CURRENCIES: frozenset[str] = frozenset(
     {
         "EUR",
@@ -40,7 +39,12 @@ SUPPORTED_CURRENCIES: frozenset[str] = frozenset(
     }
 )
 
-_MONEY_RE = re.compile(r"^([+-]?)\s*([A-Z]{3})\s*([\d\s]+[.,]?\d*)$")
+# Matches "EUR 42.50" or "+EUR 42.50" or "-12.34 EUR"
+_MONEY_RE = re.compile(
+    r"^\s*(?P<sign>[+-]?)\s*(?:(?P<currency1>[A-Z]{3})\s+)?"
+    r"(?P<amount>[\d\s]+[.,]?\d*)"
+    r"\s*(?:(?P<currency2>[A-Z]{3}))?\s*$"
+)
 
 
 class Money:
@@ -52,12 +56,6 @@ class Money:
     __slots__ = ("_amount", "_currency")
 
     def __init__(self, amount: Decimal | str | int, currency: str) -> None:
-        """Initialize Money.
-
-        Args:
-            amount: Numeric value (Decimal, int, float, or string).
-            currency: ISO 4217 three-letter currency code (e.g. 'EUR').
-        """
         currency = currency.upper().strip()
         if currency not in SUPPORTED_CURRENCIES:
             raise ValueError(
@@ -102,6 +100,7 @@ class Money:
     @property
     def is_zero(self) -> bool:
         return self._amount == 0
+
 
     # ── String representation ──────────────────────────────────────
 
@@ -196,20 +195,22 @@ class Money:
 
     @classmethod
     def parse(cls, raw: str, default_currency: str = "EUR") -> Money:
-        """Parse a string like '+EUR 42.50' or '-12,34 EUR'.
+        """Parse a string like '+EUR 42.50' or '-12.34 EUR' or '42,50 EUR'.
 
         If no currency prefix/suffix, uses default_currency.
         """
         raw = raw.strip()
-        # Try "XXX amount" or "amount XXX"
         m = _MONEY_RE.match(raw)
         if m:
-            sign = -1 if m.group(1) == "-" else 1
-            cur = m.group(2)
-            amt = m.group(3).replace(" ", "").replace(",", ".")
-            return Money(Decimal(amt) * sign, cur)
+            sign = -1 if m.group("sign") == "-" else 1
+            cur = m.group("currency1") or m.group("currency2")
+            amt_str = m.group("amount").replace(" ", "").replace(",", ".")
+            if cur:
+                return Money(Decimal(amt_str) * sign, cur)
+            else:
+                return Money(Decimal(amt_str) * sign, default_currency)
 
-        # Try just a number with default currency
+        # Last resort: just a number
         try:
             amt = Decimal(raw.replace(",", ".").replace(" ", ""))
             return Money(amt, default_currency)

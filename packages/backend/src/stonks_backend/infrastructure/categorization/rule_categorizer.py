@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 # ── Built-in fallback patterns (FR + EN) ────────────────────────────
 # Format: (field, regex_pattern, category_group, category_name, icon, color)
+# Priority: earlier in list = higher priority (checked first).
 _BUILTIN_PATTERNS: list[tuple[str, str, CategoryGroup, str, str, str]] = [
     # INCOME
     ("description", r"\b(salaire|salaire\s*net|traitement|paie\s|salary|wage|payroll)\b",
@@ -39,7 +40,8 @@ _BUILTIN_PATTERNS: list[tuple[str, str, CategoryGroup, str, str, str]] = [
     # HOUSING
     ("description", r"\b(loyer|rent|charges?\s*copro|propri[ée]taire|landlord)\b",
      CategoryGroup.HOUSING, "Loyer", "🏠", "#E65100"),
-    ("description", r"\b([ée]lectricit[ée]|EDF|engie|total\s*energ|electricity|power)\b",
+    # ⚠️ "total\s+energ" (with space) to avoid matching "TOTALENERG" (fuel station)
+    ("description", r"\b([ée]lectricit[ée]|EDF|engie|total\s+energ|electricity|power)\b",
      CategoryGroup.HOUSING, "Électricité", "⚡", "#E65100"),
     ("description", r"\b(eau|water|veolia|suez|saur)\b",
      CategoryGroup.HOUSING, "Eau", "💧", "#E65100"),
@@ -53,7 +55,7 @@ _BUILTIN_PATTERNS: list[tuple[str, str, CategoryGroup, str, str, str]] = [
      r"lidl|aldi|monoprix|franprix|casino|grocery|supermarket)\b",
      CategoryGroup.FOOD, "Courses", "🛒", "#4CAF50"),
     ("description", r"\b(restaurant|resto|pizzeria|sushi|burger|kebab|mc\s*do|"
-     r"mcdonald|quick|kfc|diner|brasserie|bistrot)\b",
+     r"mcdonalds?|quick|kfc|diner|brasserie|bistrot)\b",
      CategoryGroup.FOOD, "Restaurant", "🍽️", "#4CAF50"),
     ("description", r"\b(caf[ée]|starbucks|coffee|columbus|nespresso)\b",
      CategoryGroup.FOOD, "Café", "☕", "#4CAF50"),
@@ -64,8 +66,9 @@ _BUILTIN_PATTERNS: list[tuple[str, str, CategoryGroup, str, str, str]] = [
     ("description", r"\b(essence|gasoil|diesel|gazole|sp98|sp95|e10|fuel|gas\s*station|"
      r"totalenerg|esso|shell|bp\b|avia|elane)\b",
      CategoryGroup.TRANSPORT, "Essence", "⛽", "#1976D2"),
+    # Parking removed from this pattern; dedicated Parking rule below
     ("description", r"\b(transport|m[ée]tro|bus|tram|ratp|sncf|t[ée]l[ée]p[ée]age|"
-     r"p[ée]age|vinci|parking|navigo|t[ée]l[ée]carte|public\s*transport)\b",
+     r"p[ée]age|vinci|navigo|t[ée]l[ée]carte|public\s*transport)\b",
      CategoryGroup.TRANSPORT, "Transports en commun", "🚇", "#1976D2"),
     ("description", r"\b(parking|stationnement|horodateur|indigo|effia)\b",
      CategoryGroup.TRANSPORT, "Parking", "🅿️", "#1976D2"),
@@ -90,7 +93,9 @@ _BUILTIN_PATTERNS: list[tuple[str, str, CategoryGroup, str, str, str]] = [
      r"bricolage|furniture|home\s*decor)\b",
      CategoryGroup.SHOPPING, "Maison", "🪴", "#9C27B0"),
 
-    # ENTERTAINMENT
+    # ENTERTAINMENT — Sport BEFORE Abonnements to avoid "abonnement" greed
+    ("description", r"\b(sport|gym|fitness|basic.fit|keepcool|salle\s*sport)\b",
+     CategoryGroup.ENTERTAINMENT, "Sport", "🏋️", "#FF5722"),
     ("description", r"\b(abonnement|subscription|netflix|spotify|deezer|disney\+|"
      r"prime\s*video|canal\+|youtube\s*premium)\b",
      CategoryGroup.ENTERTAINMENT, "Abonnements", "📺", "#FF5722"),
@@ -100,11 +105,9 @@ _BUILTIN_PATTERNS: list[tuple[str, str, CategoryGroup, str, str, str]] = [
     ("description", r"\b(voyage|billet\s*avion|airbnb|booking|hotel|train|vol|"
      r"air\s*france|easyjet|ryanair|travel|flight)\b",
      CategoryGroup.ENTERTAINMENT, "Voyages", "✈️", "#FF5722"),
-    ("description", r"\b(sport|gym|fitness|basic.fit|keepcool|salle\s*sport)\b",
-     CategoryGroup.ENTERTAINMENT, "Sport", "🏋️", "#FF5722"),
 
     # FINANCIAL
-    ("description", r"\b(frais\s*banc|commission|cotisation\s*cb|bank\s*fee|frais\s*tenu)\b",
+    ("description", r"\b(frais\s*banc|commission|cotisation\s*cb|bank\s*fee|frais\s*tenu[eé])\b",
      CategoryGroup.FINANCIAL, "Frais bancaires", "🏦", "#607D8B"),
     ("description", r"\b(imp[ôo]t|taxe|dgfip|fisc|urssaf|tva|vat|income\s*tax)\b",
      CategoryGroup.FINANCIAL, "Impôts", "📝", "#607D8B"),
@@ -124,7 +127,7 @@ class RuleBasedCategorizer(CategorizationPort):
 
     Priority order:
     1. DB rules (highest priority first)
-    2. Built-in patterns
+    2. Built-in patterns (in list order)
     3. Returns None if no rule matches — caller falls back to LLM
     """
 
@@ -137,8 +140,13 @@ class RuleBasedCategorizer(CategorizationPort):
             self._db_rules = await self._repo.get_rule_categories_map()
 
     async def categorize(self, transaction: Transaction) -> Category | None:
+        return await self._categorize_impl(transaction)
+
+    async def _categorize_impl(self, transaction: Transaction) -> Category | None:
         await self._ensure_rules_loaded()
         assert self._db_rules is not None
+
+        # Phase 1: DB rules
         for field, pattern, _priority, category_id in self._db_rules:
             text_val = self._get_field(transaction, field)
             if text_val and self._match(pattern, text_val):
@@ -146,6 +154,7 @@ class RuleBasedCategorizer(CategorizationPort):
                 if cat is not None:
                     return cat
 
+        # Phase 2: Built-in patterns
         for field, pattern, group, name, _icon, _color in _BUILTIN_PATTERNS:
             text_val = self._get_field(transaction, field)
             if text_val and self._match(pattern, text_val):
@@ -160,7 +169,7 @@ class RuleBasedCategorizer(CategorizationPort):
     ) -> dict[int, Category]:
         results: dict[int, Category] = {}
         for idx, tx in enumerate(transactions):
-            cat = await self.categorize(tx)
+            cat = await self._categorize_impl(tx)
             if cat is not None:
                 results[idx] = cat
         return results

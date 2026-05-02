@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     # ── Server ─────────────────────────────────────────────────────
     host: str = "0.0.0.0"
     port: int = 8000
+    public_url: str = "http://localhost:8000"  # For OAuth redirect_uri
 
     # ── Database ───────────────────────────────────────────────────
     database_url: SecretStr = Field(
@@ -86,6 +87,32 @@ class Settings(BaseSettings):
 
     # ── CORS ───────────────────────────────────────────────────────
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+
+    # ── Enable Banking (PSD2) ──────────────────────────────────────
+    enable_banking_client_id: SecretStr = Field(
+        default=SecretStr(""),
+        description="Enable Banking OAuth2 client_id (sandbox or production).",
+    )
+    enable_banking_client_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description="Enable Banking OAuth2 client_secret (optional for PKCE).",
+    )
+    enable_banking_sandbox: bool = Field(
+        default=True,
+        description="Use Enable Banking sandbox API instead of production.",
+    )
+
+    # ── OpenRouter (LLM Categorization) ────────────────────────────
+    openrouter_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="OpenRouter API key for LLM categorization fallback.",
+    )
+
+    # ── Feature Flags ──────────────────────────────────────────────
+    feature_bank_scraping_fallback: bool = Field(
+        default=False,
+        description="Enable fallback bank scraping (off by default, risky).",
+    )
 
     @field_validator("log_format")
     @classmethod

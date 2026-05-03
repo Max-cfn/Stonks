@@ -1,4 +1,8 @@
-"""SQLAlchemy declarative Base and models."""
+"""SQLAlchemy declarative Base and core models.
+
+Importing this module ensures all ORM models are registered on Base.metadata
+— required for Alembic autogenerate.
+"""
 
 from __future__ import annotations
 
@@ -61,3 +65,14 @@ class AuditLogModel(Base):
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id} action={self.action} ts={self.ts}>"
+
+
+# Import cashflow models so they are registered on Base.metadata
+# (required for Alembic autogenerate and schema introspection)
+from stonks_backend.infrastructure.persistence.cashflow_models import (  # noqa: E402, F401
+    CashflowAccountModel,
+    CashflowBalanceSnapshotModel,
+    CashflowCategoryModel,
+    CashflowTransactionModel,
+    CategorizationRuleModel,
+)

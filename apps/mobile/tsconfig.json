@@ -1,0 +1,22 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@stonks/shared-types": ["../../packages/shared-types/src"],
+      "@stonks/shared-i18n": ["../../packages/shared-i18n/src"]
+    },
+    "types": ["jest", "nativewind/types"],
+    "jsx": "react-jsx",
+    "noImplicitAny": false
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts",
+    "jest.config.js"
+  ],
+  "exclude": ["node_modules"]
+}

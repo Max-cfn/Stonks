@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from stonks_backend.interfaces.api.routes.auth import router as auth_router
 from stonks_backend.interfaces.api.routes.cashflow import router as cashflow_router
 from stonks_backend.interfaces.api.routes.health import router as health_router
+from stonks_backend.interfaces.api.routes.push import router as push_router
 
 
 def create_app() -> FastAPI:
@@ -32,6 +33,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(cashflow_router)
+    app.include_router(push_router)
 
 
 def _register_middleware(app: FastAPI) -> None:

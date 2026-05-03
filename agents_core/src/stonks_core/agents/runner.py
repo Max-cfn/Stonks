@@ -16,7 +16,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
 
 from ..journal import log_event
-from ..orchestrator.llm import estimate_cost, make_chat_model, make_light_model
+from ..orchestrator.llm import make_chat_model, make_light_model
 from ..tools import REVIEWER_TOOLS, SUBAGENT_TOOLS
 from .prompts import get_subagent_prompt
 
@@ -68,14 +68,13 @@ def run_subagent(role: str, brief: str, max_iterations: int = 50) -> str:
             if isinstance(msg.content, str) and msg.content:
                 final_text = msg.content  # on garde le dernier message texte
 
-    cost = estimate_cost(model.model_name, tokens_in, tokens_out)  # type: ignore[attr-defined]
-    log_event(
+        log_event(
         agent=role,
         phase="ad_hoc",
         action="subagent_finished",
         output_summary=final_text[:500] or "(pas de message texte final)",
         tokens_in=tokens_in,
         tokens_out=tokens_out,
-        cost_usd=cost,
+        cost_usd=0.0,  # estimation locale supprimée — voir https://openrouter.ai/activity
     )
     return final_text or f"(sous-agent {role} terminé sans message final)"

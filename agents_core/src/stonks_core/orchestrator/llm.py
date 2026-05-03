@@ -1,26 +1,23 @@
 """Client LLM unifié (OpenRouter via API OpenAI-compatible).
 
-Documentation OpenRouter : https://openrouter.ai/docs
+Doc OpenRouter : https://openrouter.ai/docs
 DeepSeek V4 Pro : https://openrouter.ai/deepseek/deepseek-v4-pro
 
-Ce module ajoute 3 couches de résilience face aux rate limits / 5xx upstream :
+3 couches de résilience face aux erreurs upstream (429, 402, 5xx, timeouts) :
 
 1. **Provider routing** : OpenRouter route DeepSeek V4 Pro vers 6 providers
    (DeepSeek officiel, GMICloud, AtlasCloud, SiliconFlow, Novita, Together).
-   On force l'ordre de préférence via `provider.order` pour éviter Together
-   (le plus cher : $2.10/M in vs $0.435 chez DeepSeek officiel) et tomber
-   sur les providers les moins saturés.
+   On force l'ordre via `provider.order` pour préférer DeepSeek officiel
+   (le moins cher, 1M ctx). Mais maintenant on autorise OpenRouter à fallback
+   sur les autres providers si DeepSeek officiel renvoie 402 (insufficient
+   balance dans le bucket OpenRouter — fréquent quand pas de BYOK) ou 429.
 
-2. **Retry exponentiel** : `max_retries` du client OpenAI (gère 429 + 5xx).
-   Backoff avec jitter par défaut.
+2. **Retry exponentiel** : `max_retries` du client OpenAI, gère 429+5xx
+   avec backoff + jitter.
 
-3. **Fallback model** : via `Runnable.with_fallbacks([flash])`. Si Pro est
-   indisponible même après tous les retries, le graph bascule
-   automatiquement sur DeepSeek V4 Flash (5x moins cher, plus dispo) sans
-   perdre la conversation.
-
-Tous les appels sont loggés dans execution_log.txt et les coûts sont
-trackés contre `orchestrator_token_budget`.
+3. **Fallback model** : `Runnable.with_fallbacks([flash])`. Si le modèle
+   principal échoue après tous les retries (toute erreur), bascule sur
+   DeepSeek V4 Flash (5x moins cher, plus dispo).
 """
 from __future__ import annotations
 
@@ -32,24 +29,6 @@ from langchain_openai import ChatOpenAI
 from ..journal import log_event
 from .config import OrchestratorSettings, get_settings
 
-# Tarifs OpenRouter pour DeepSeek V4 (au 28 avril 2026, vérifier régulièrement).
-# Source : https://openrouter.ai/api/v1/models/<slug>/endpoints
-# Note : DeepSeek officiel est le provider le moins cher pour ces modèles.
-_PRICING_USD_PER_1M_TOKENS: dict[str, tuple[float, float]] = {
-    # model_slug : (input_price, output_price) chez le provider le moins cher
-    "deepseek/deepseek-v4-pro": (0.435, 0.870),
-    "deepseek/deepseek-v4-flash": (0.140, 0.280),
-    "deepseek/deepseek-v3.2-speciale": (0.400, 1.200),
-}
-
-
-def estimate_cost(model: str, tokens_in: int, tokens_out: int) -> float:
-    """Estime le coût d'un appel en USD (au prix du provider le moins cher)."""
-    if model not in _PRICING_USD_PER_1M_TOKENS:
-        return 0.0
-    p_in, p_out = _PRICING_USD_PER_1M_TOKENS[model]
-    return (tokens_in * p_in + tokens_out * p_out) / 1_000_000
-
 
 def _build_provider_routing(s: OrchestratorSettings) -> dict[str, Any]:
     """Construit le dict `provider` envoyé à OpenRouter dans extra_body.
@@ -57,12 +36,13 @@ def _build_provider_routing(s: OrchestratorSettings) -> dict[str, Any]:
     Doc : https://openrouter.ai/docs/features/provider-routing
 
     Champs supportés :
-    - `order` : liste ordonnée de providers à essayer en premier
-    - `ignore` : providers à totalement exclure
-    - `allow_fallbacks` : si True, OpenRouter peut router vers d'autres
-      providers que ceux de `order` si les premiers sont indispos
-    - `require_parameters` : exige que le provider supporte les params
-      demandés (reasoning, tool_calling, etc.)
+    - `order` : liste ordonnée de providers préférés
+    - `ignore` : providers exclus
+    - `allow_fallbacks` : si True, OpenRouter peut router ailleurs si
+      les providers de `order` sont indispos (recommandé pour la résilience)
+    - `require_parameters` : exige le support de tous les params (reasoning,
+      tools…). Doit rester False : le client OpenAI envoie
+      `max_completion_tokens` qu'aucun provider ne déclare formellement.
     """
     routing: dict[str, Any] = {
         "allow_fallbacks": s.openrouter_allow_fallbacks,
@@ -83,14 +63,11 @@ def make_chat_model(
     extra_body: dict[str, Any] | None = None,
     enable_provider_routing: bool = True,
 ) -> ChatOpenAI:
-    """Construit un client ChatOpenAI configuré pour OpenRouter.
+    """Construit un ChatOpenAI configuré pour OpenRouter.
 
-    OpenRouter expose une API OpenAI-compatible sur https://openrouter.ai/api/v1.
     Le `reasoning_effort` et le `provider routing` sont passés via `extra_body`
-    (paramètres OpenRouter, pas OpenAI standard).
-
-    Le client OpenAI gère automatiquement le retry sur 429 et 5xx avec backoff
-    exponentiel + jitter (paramètre `max_retries`).
+    (paramètres OpenRouter spécifiques). Le client OpenAI gère le retry
+    exponentiel + jitter sur 429 et 5xx (param `max_retries`).
     """
     s = get_settings()
 
@@ -119,15 +96,13 @@ def make_chat_model(
 def make_orchestrator_model() -> Runnable:
     """Modèle principal pour l'orchestrateur.
 
-    Configuration appliquée :
-    - DeepSeek V4 Pro avec reasoning='high' (configurable via .env)
-    - Provider routing : DeepSeek officiel en 1er, Together exclu par défaut
-    - max_retries=6 sur 429/5xx avec backoff exponentiel
-    - Fallback automatique sur DeepSeek V4 Flash si Pro indispo après retries
-      (activable/désactivable via OPENROUTER_ENABLE_MODEL_FALLBACK)
-
-    Returns:
-        Un Runnable LangChain (compatible avec create_react_agent).
+    Configuration :
+    - DeepSeek V4 Pro avec reasoning='high'
+    - Provider routing : DeepSeek officiel préféré, mais fallback OpenRouter
+      autorisé (gère le 402 "Insufficient Balance" du bucket OpenRouter)
+    - max_retries=6 sur 429/5xx
+    - Si Pro fail entièrement après retries → bascule auto sur V4 Flash via
+      with_fallbacks (toute Exception déclenche)
     """
     s = get_settings()
     primary = make_chat_model()
@@ -143,10 +118,9 @@ def make_orchestrator_model() -> Runnable:
         )
         return primary
 
-    # Fallback sur le light model (V4 Flash) si Pro est complètement KO
     fallback = make_chat_model(
         model=s.openrouter_fallback_model,
-        temperature=0.1,  # plus déterministe pour le fallback
+        temperature=0.1,
     )
 
     log_event(
@@ -160,22 +134,13 @@ def make_orchestrator_model() -> Runnable:
         ),
     )
 
-    # with_fallbacks : si primary lève une exception (après ses retries internes),
-    # bascule automatiquement sur fallback. La conversation continue sans interruption.
     return primary.with_fallbacks(
         [fallback],
-        # Tous les types d'erreurs où on bascule (429, timeout, 5xx, etc.)
-        # On laisse en None = on bascule sur toute Exception, ce qui couvre
-        # RateLimitError, APITimeoutError, APIError, InternalServerError…
         exceptions_to_handle=(Exception,),
     )
 
 
 def make_light_model() -> ChatOpenAI:
-    """Modèle léger pour sous-tâches (DeepSeek V4 Flash par défaut).
-
-    Pas de fallback : si Flash est down, on remonte l'erreur (le subagent
-    décidera s'il escalade à l'orchestrateur ou retry plus tard).
-    """
+    """Modèle léger pour sous-tâches (DeepSeek V4 Flash par défaut)."""
     s = get_settings()
     return make_chat_model(model=s.openrouter_model_light, temperature=0.1)

@@ -21,6 +21,11 @@ from .git_tools import (
     git_push,
     git_status,
 )
+from .gh_ci_tools import (
+    gh_pr_failed_logs,
+    gh_pr_status,
+    gh_wait_for_ci,
+)
 from .gitnexus_tools import (
     gitnexus_context,
     gitnexus_cypher,
@@ -60,6 +65,9 @@ ORCHESTRATOR_TOOLS = [
     gitnexus_detect_changes,
     gitnexus_cypher,
     spawn_agent,
+    gh_pr_status,
+    gh_pr_failed_logs,
+    gh_wait_for_ci,
     request_human_approval,
 ]
 
@@ -77,6 +85,9 @@ SUBAGENT_TOOLS = [
     git_push,
     git_diff,
     gh_pr_create,
+    gh_pr_status,
+    gh_pr_failed_logs,
+    gh_wait_for_ci,
     gitnexus_impact,
     gitnexus_query,
     gitnexus_context,
@@ -107,7 +118,10 @@ __all__ = [
     "file_read",
     "file_write",
     "gh_pr_create",
+    "gh_pr_failed_logs",
     "gh_pr_merge",
+    "gh_pr_status",
+    "gh_wait_for_ci",
     "git_branch",
     "git_commit",
     "git_diff",

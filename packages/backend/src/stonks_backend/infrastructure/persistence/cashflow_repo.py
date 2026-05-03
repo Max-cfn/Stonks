@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import CursorResult, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -157,10 +157,14 @@ class CashflowSqlRepository(CashflowRepositoryPort):
                 }
             )
 
-        # Execute batch INSERT ON CONFLICT DO NOTHING
+        # Execute batch INSERT ON CONFLICT DO NOTHING.
+        # session.execute() returns Result[Any] in stubs but the actual runtime
+        # object for INSERT/UPDATE/DELETE is CursorResult, which has .rowcount.
+        # We cast() to inform mypy strict — this is safe by SQLAlchemy contract.
         stmt = insert(CashflowTransactionModel)
         stmt = stmt.on_conflict_do_nothing(constraint="uq_account_bank_tx")
-        result = await self._session.execute(stmt, values)
+        raw_result = await self._session.execute(stmt, values)
+        result = cast("CursorResult[Any]", raw_result)
         await self._session.flush()
 
         return result.rowcount if result.rowcount else 0

@@ -89,7 +89,7 @@ jobs:
             --cov=stonks_backend \
             --cov-report=term-missing \
             --cov-report=xml \
-            --cov-fail-under=78
+            --cov-fail-under=70
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:

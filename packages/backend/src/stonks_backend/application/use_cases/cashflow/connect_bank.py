@@ -25,10 +25,20 @@ class ConnectBankAccount:
     def __init__(
         self,
         bank_connector: BankConnectorPort,
-        cashflow_repo: CashflowRepositoryPort,
+        cashflow_repo: CashflowRepositoryPort | None = None,
     ) -> None:
         self._connector = bank_connector
+        # Repo is optional: get_authorization_url() doesn't need persistence.
+        # handle_callback() and disconnect_bank() will raise if repo is None.
         self._repo = cashflow_repo
+
+    def _require_repo(self) -> CashflowRepositoryPort:
+        if self._repo is None:
+            raise ConnectBankAccountError(
+                "CashflowRepositoryPort is required for this operation. "
+                "Pass cashflow_repo to the ConnectBankAccount constructor."
+            )
+        return self._repo
 
     async def get_authorization_url(self, user_id: UUID, redirect_uri: str) -> str:
         """Generate the OAuth authorization URL for a user.
@@ -56,18 +66,20 @@ class ConnectBankAccount:
         accounts = await self._connector.list_accounts(user_id)
 
         # Step 3: Persist each account
+        repo = self._require_repo()
         for account in accounts:
-            await self._repo.save_account(account)
+            await repo.save_account(account)
 
         return accounts
 
     async def disconnect_bank(self, user_id: UUID, account_id: UUID) -> None:
         """Mark an account as disconnected."""
-        account = await self._repo.get_account(account_id)
+        repo = self._require_repo()
+        account = await repo.get_account(account_id)
         if account is None:
             raise ConnectBankAccountError(f"Account {account_id} not found")
         if account.user_id != user_id:
             raise ConnectBankAccountError("Access denied: account belongs to another user")
         account.status = AccountStatus.DISCONNECTED
         account.touch()
-        await self._repo.save_account(account)
+        await repo.save_account(account)

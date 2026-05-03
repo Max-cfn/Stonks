@@ -338,7 +338,7 @@ class EnableBankingAdapter(BankConnectorPort):
 
     # ── Parsers ───────────────────────────────────────────────────
 
-    def _parse_transaction(self, item: dict, account_id: UUID) -> Transaction:
+    def _parse_transaction(self, item: dict[str, Any], account_id: UUID) -> Transaction:
         amount_data = item.get("transactionAmount", {})
         amount = Money(
             str(amount_data.get("amount", "0")),

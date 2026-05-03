@@ -340,7 +340,7 @@ with st.sidebar:
     st.caption(f"**Modèle** `{SETTINGS.openrouter_model}`")
     st.caption(f"**Reasoning** `{SETTINGS.openrouter_reasoning_effort}`")
     st.caption(f"**Repo** `{SETTINGS.target_github_repo}`")
-    st.caption(f"**Budget** {SETTINGS.orchestrator_token_budget:,} tk")
+    st.caption("📊 [Coûts réels sur OpenRouter](https://openrouter.ai/activity)")
     st.caption("_Pour modifier : onglet ⚙️ Config_")
 
     # Pending approvals badge
@@ -556,7 +556,7 @@ elif section == "📜 Logs":
         st.info("Aucune entrée encore — l'orchestrateur n'a pas tourné, ou le log est vide.")
     else:
         df = pd.DataFrame(entries)
-        cols = ["ts", "agent", "phase", "action", "tool", "output_summary", "cost_usd"]
+        cols = ["ts", "agent", "phase", "action", "tool", "output_summary", "tokens"]
         cols = [c for c in cols if c in df.columns]
         st.dataframe(df[cols], use_container_width=True, height=620)
 
@@ -574,16 +574,14 @@ elif section == "📊 Métriques":
 
     tokens_in = sum((e.get("tokens") or {}).get("in", 0) or 0 for e in entries)
     tokens_out = sum((e.get("tokens") or {}).get("out", 0) or 0 for e in entries)
-    cost = sum(float(e.get("cost_usd") or 0.0) for e in entries)
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Tokens IN", f"{tokens_in:,}")
-    c2.metric("Tokens OUT", f"{tokens_out:,}")
-    c3.metric("Coût cumulé (USD)", f"${cost:.4f}")
-    budget_used_pct = (
-        (tokens_in + tokens_out) / max(SETTINGS.orchestrator_token_budget, 1) * 100
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Tokens IN (locaux)", f"{tokens_in:,}")
+    c2.metric("Tokens OUT (locaux)", f"{tokens_out:,}")
+    c3.markdown(
+        "### Coût réel\n"
+        "👉 [OpenRouter Activity](https://openrouter.ai/activity)\n\n"
+        "_Les compteurs ci-contre sont indicatifs — la facturation réelle est sur OpenRouter._"
     )
-    c4.metric("Budget consommé", f"{budget_used_pct:.1f}%")
 
     st.divider()
     st.subheader("Activité par agent")
@@ -646,8 +644,7 @@ elif section == "⚙️ Config":
             "Indicatif coût DeepSeek V4 Pro : ~$0.65/M tokens (mix in+out)."
         ),
     )
-    cost_estimate = new_budget * 0.65 / 1_000_000
-    st.caption(f"≈ **${cost_estimate:.2f}** de dépense max par run au prix DeepSeek V4 Pro actuel.")
+    st.caption("📊 Coût réel suivi sur [OpenRouter Activity](https://openrouter.ai/activity)")
     if st.button("💾 Sauvegarder le budget", type="primary"):
         if _write_env_var("ORCHESTRATOR_TOKEN_BUDGET", str(int(new_budget))):
             st.success(f"`.env` mis à jour : ORCHESTRATOR_TOKEN_BUDGET={int(new_budget):,}")

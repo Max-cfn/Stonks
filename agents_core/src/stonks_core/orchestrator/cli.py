@@ -14,7 +14,6 @@ from rich.table import Table
 from ..journal import read_recent
 from ..tools.human_tools import list_pending_requests
 from .config import get_settings
-from .llm import estimate_cost
 
 app = typer.Typer(name="stonks-agent", help="Observabilité de la flotte.", no_args_is_help=True)
 console = Console()
@@ -87,13 +86,6 @@ def reject(req_id: str, comment: str = "") -> None:
 
     ok = respond_to_request(req_id, "rejected", comment)
     console.print(f"[yellow]⛔ rejected[/yellow] {req_id}" if ok else f"[red]❌ pas trouvé : {req_id}[/red]")
-
-
-@app.command()
-def cost_estimate(model: str, tokens_in: int, tokens_out: int) -> None:
-    """Calcule le coût d'un appel LLM (utile en debug)."""
-    cost = estimate_cost(model, tokens_in, tokens_out)
-    console.print(f"Coût estimé pour {model} ({tokens_in}/{tokens_out}) : [cyan]${cost:.6f}[/cyan]")
 
 
 if __name__ == "__main__":

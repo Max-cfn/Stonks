@@ -16,9 +16,7 @@ class PushTokenModel(Base):
     """Stores Expo push tokens for push notification delivery."""
 
     __tablename__ = "push_tokens"
-    __table_args__ = (
-        UniqueConstraint("user_id", "platform", name="uq_push_token_user_platform"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "platform", name="uq_push_token_user_platform"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -28,9 +26,7 @@ class PushTokenModel(Base):
         index=True,
     )
     token: Mapped[str] = mapped_column(String(512), nullable=False)
-    platform: Mapped[str] = mapped_column(
-        String(32), default="expo", nullable=False
-    )
+    platform: Mapped[str] = mapped_column(String(32), default="expo", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -39,7 +35,4 @@ class PushTokenModel(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<PushTokenModel id={self.id} user_id={self.user_id} "
-            f"platform={self.platform}>"
-        )
+        return f"<PushTokenModel id={self.id} user_id={self.user_id} platform={self.platform}>"

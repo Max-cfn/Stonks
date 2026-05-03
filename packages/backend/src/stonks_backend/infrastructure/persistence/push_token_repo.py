@@ -37,9 +37,6 @@ class PushTokenRepository:
 
     async def get_by_user(self, user_id: uuid.UUID) -> list[PushTokenModel]:
         """Get all push tokens for a user."""
-        stmt = (
-            select(PushTokenModel)
-            .where(PushTokenModel.user_id == user_id)
-        )
+        stmt = select(PushTokenModel).where(PushTokenModel.user_id == user_id)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())

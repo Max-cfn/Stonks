@@ -28,7 +28,7 @@ class PushTokenRepository:
             )
             .on_conflict_do_update(
                 constraint="uq_push_token_user_platform",
-                set_=dict(token=token),
+                set_={"token": token},
             )
             .returning(PushTokenModel)
         )

@@ -40,7 +40,7 @@ class SimulateCompoundGrowth:
         Each scenario runs an independent month-by-month projection, using
         monthly compounding::
 
-            balance_{t+1} = balance_t × (1 + r/12) + monthly_contrib
+            balance_{t+1} = balance_t x (1 + r/12) + monthly_contrib
 
         where *r* is the scenario's annual rate (expressed as a decimal;
         0.07 = 7%).

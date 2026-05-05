@@ -60,11 +60,11 @@ def is_fiat(currency_code: str) -> bool:
 
 
 __all__ = [
-    "Money",
-    "CurrencyMismatchError",
-    "MoneyParseError",
-    "SUPPORTED_CURRENCIES",
     "SUPPORTED_CRYPTO_TICKERS",
+    "SUPPORTED_CURRENCIES",
+    "CurrencyMismatchError",
+    "Money",
+    "MoneyParseError",
     "is_crypto",
     "is_fiat",
 ]

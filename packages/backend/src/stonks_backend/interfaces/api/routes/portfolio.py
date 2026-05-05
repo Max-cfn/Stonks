@@ -10,7 +10,6 @@ import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
 from uuid import UUID
 
 from fastapi import (
@@ -18,7 +17,6 @@ from fastapi import (
     Depends,
     HTTPException,
     Query,
-    Request,
     WebSocket,
     WebSocketDisconnect,
     status,
@@ -53,9 +51,6 @@ from stonks_backend.infrastructure.market_data.coingecko_adapter import (
 )
 from stonks_backend.infrastructure.market_data.fx_ecb_adapter import FxRateECBAdapter
 from stonks_backend.infrastructure.market_data.rss_news_adapter import RssNewsAdapter
-from stonks_backend.infrastructure.market_data.yahoo_finance_adapter import (
-    YahooFinanceAdapter,
-)
 from stonks_backend.infrastructure.persistence.portfolio_repo import (
     PortfolioSqlRepository,
 )
@@ -651,8 +646,8 @@ async def portfolio_stream(
     ```
     """
     # Auth via query token — reuse JWT verification
-    from stonks_backend.infrastructure.security.jwt_service import JWTService
     from stonks_backend.infrastructure.config import get_settings
+    from stonks_backend.infrastructure.security.jwt_service import JWTService
 
     settings = get_settings()
     jwt_service = JWTService(
@@ -664,7 +659,7 @@ async def portfolio_stream(
 
     # We need to verify the token. If it's an access token:
     try:
-        payload = jwt_service.verify_access_token(token)
+        jwt_service.verify_access_token(token)
     except Exception:
         await websocket.close(code=4001, reason="Invalid or expired token")
         return
@@ -681,7 +676,7 @@ async def portfolio_stream(
                 data = await asyncio.wait_for(
                     websocket.receive_text(), timeout=30.0
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # No message from client — send price updates
                 data = None
 

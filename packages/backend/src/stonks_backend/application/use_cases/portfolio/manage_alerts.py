@@ -13,7 +13,11 @@ from decimal import Decimal
 import httpx
 import structlog
 
-from stonks_backend.application.ports.portfolio import PortfolioRepositoryPort, PriceAlert, PriceFeedPort
+from stonks_backend.application.ports.portfolio import (
+    PortfolioRepositoryPort,
+    PriceAlert,
+    PriceFeedPort,
+)
 from stonks_backend.domain.portfolio.ticker import Ticker
 
 logger = structlog.get_logger(__name__)

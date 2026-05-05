@@ -24,20 +24,20 @@ from stonks_backend.application.ports.repositories import (
 )
 
 __all__ = [
-    # ── User / Auth ──────────────────────────
-    "UserRepositoryPort",
-    "RefreshTokenRepositoryPort",
     # ── Cashflow ─────────────────────────────
     "BankConnectorPort",
-    "CategorizationPort",
     "CashflowRepositoryPort",
-    # ── Portfolio (ports) ────────────────────
-    "PriceFeedPort",
+    "CategorizationPort",
     "FxRatePort",
+    "NewsDigest",
     "NewsFeedPort",
-    "PortfolioRepositoryPort",
     # ── Portfolio (data contracts) ───────────
     "NewsItem",
+    "PortfolioRepositoryPort",
     "PriceAlert",
-    "NewsDigest",
+    # ── Portfolio (ports) ────────────────────
+    "PriceFeedPort",
+    "RefreshTokenRepositoryPort",
+    # ── User / Auth ──────────────────────────
+    "UserRepositoryPort",
 ]

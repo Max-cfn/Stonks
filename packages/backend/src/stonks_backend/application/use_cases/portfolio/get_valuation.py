@@ -12,7 +12,11 @@ from decimal import Decimal
 
 import structlog
 
-from stonks_backend.application.ports.portfolio import FxRatePort, PortfolioRepositoryPort, PriceFeedPort
+from stonks_backend.application.ports.portfolio import (
+    FxRatePort,
+    PortfolioRepositoryPort,
+    PriceFeedPort,
+)
 from stonks_backend.application.use_cases.portfolio.dto import (
     HoldingValuation,
     PortfolioValuation,
@@ -95,7 +99,7 @@ class GetPortfolioValuation:
             *quote_tasks.values(), return_exceptions=True
         )
         quotes: dict = {}
-        for ticker_key, result in zip(quote_tasks.keys(), quote_results):
+        for ticker_key, result in zip(quote_tasks.keys(), quote_results, strict=False):
             if isinstance(result, Exception):
                 logger.warning(
                     "valuation_quote_failed",

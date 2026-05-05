@@ -73,7 +73,7 @@ class Holding:
             quote: A current market quote for this holding's ticker.
 
         Returns:
-            Money representing quantity × quote mid_price.
+            Money representing quantity x quote mid_price.
 
         Raises:
             HoldingValidationError: if quote ticker or currency mismatch.
@@ -84,7 +84,7 @@ class Holding:
     def pnl(self, quote: Quote) -> Money:
         """Compute unrealised profit/loss against average cost.
 
-        P&L = (quote.mid_price - avg_cost) × quantity
+        P&L = (quote.mid_price - avg_cost) x quantity
 
         Args:
             quote: A current market quote for this holding's ticker.
@@ -102,7 +102,7 @@ class Holding:
     def pnl_pct(self, quote: Quote) -> Decimal:
         """Compute unrealised P&L as a percentage of average cost.
 
-        Returns (quote.mid_price - avg_cost) / avg_cost × 100.
+        Returns (quote.mid_price - avg_cost) / avg_cost x 100.
 
         Args:
             quote: A current market quote for this holding's ticker.

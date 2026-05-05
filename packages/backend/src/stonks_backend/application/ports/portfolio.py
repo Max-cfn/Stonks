@@ -17,7 +17,6 @@ from stonks_backend.domain.portfolio.quote import Quote
 from stonks_backend.domain.portfolio.ticker import Ticker
 from stonks_backend.domain.portfolio.trade import Trade
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Data contracts (part of the port — adapters produce/consume these shapes)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -469,13 +468,13 @@ class PortfolioRepositoryPort(ABC):
 
 
 __all__ = [
+    "FxRatePort",
+    "NewsDigest",
+    "NewsFeedPort",
     # Data contracts
     "NewsItem",
+    "PortfolioRepositoryPort",
     "PriceAlert",
-    "NewsDigest",
     # Abstract ports
     "PriceFeedPort",
-    "FxRatePort",
-    "NewsFeedPort",
-    "PortfolioRepositoryPort",
 ]

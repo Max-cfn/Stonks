@@ -61,7 +61,7 @@ class Lot:
     def cost_basis(self) -> Money:
         """Compute the total cost basis including fees.
 
-        cost_basis = (price × quantity) + fees
+        cost_basis = (price x quantity) + fees
 
         Returns:
             Money representing the total cost of this lot.
@@ -71,5 +71,5 @@ class Lot:
 
     @property
     def proceeds(self) -> Money:
-        """Gross proceeds (price × quantity) without fees."""
+        """Gross proceeds (price x quantity) without fees."""
         return Money(self.price * self.quantity, self.currency)

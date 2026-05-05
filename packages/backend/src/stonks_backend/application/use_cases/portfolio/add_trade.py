@@ -53,7 +53,7 @@ class AddTrade:
         For **BUY**: increases holding quantity and updates the weighted-average
         cost::
 
-            new_avg = (old_qty × old_avg + new_qty × new_price) / (old_qty + new_qty)
+            new_avg = (old_qty x old_avg + new_qty x new_price) / (old_qty + new_qty)
 
         For **SELL**: decreases holding quantity.  Average cost is left unchanged.
         The quantity sold must be ≤ the current holding quantity.

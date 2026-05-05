@@ -22,7 +22,7 @@ class HoldingValuation:
     Attributes:
         holding: The underlying holding.
         quote: The market quote used for valuation.
-        market_value: Current market value (quantity × mid_price).
+        market_value: Current market value (quantity x mid_price).
         pnl: Unrealised profit/loss in the holding's currency.
         pnl_pct: Unrealised P&L as a percentage of average cost.
         weight_pct: Weight of this holding in the total portfolio (0-100).

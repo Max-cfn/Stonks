@@ -56,7 +56,7 @@ class Ticker:
         True
     """
 
-    __slots__ = ("_symbol", "_exchange")
+    __slots__ = ("_exchange", "_symbol")
 
     def __init__(self, symbol: str, exchange: Exchange | None = None) -> None:
         s = symbol.strip().upper()

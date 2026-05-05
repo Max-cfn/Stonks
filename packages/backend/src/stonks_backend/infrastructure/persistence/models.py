@@ -67,22 +67,11 @@ class AuditLogModel(Base):
         return f"<AuditLog id={self.id} action={self.action} ts={self.ts}>"
 
 
-# Import cashflow models so they are registered on Base.metadata
-# (required for Alembic autogenerate and schema introspection)
-from stonks_backend.infrastructure.persistence.cashflow_models import (  # noqa: E402, F401
-    CashflowAccountModel,
-    CashflowBalanceSnapshotModel,
-    CashflowCategoryModel,
-    CashflowTransactionModel,
-    CategorizationRuleModel,
-)
+# ── Lazy model registration (avoids circular imports) ────────────────────
+# Import the module (not individual symbols) so that all models are
+# registered on Base.metadata — required for Alembic autogenerate.
+# Using `import module` instead of `from module import Symbol` avoids
+# circular import errors between models.py ↔ portfolio_models.py.
 
-# Import portfolio models so they are registered on Base.metadata
-# (required for Alembic autogenerate and schema introspection)
-from stonks_backend.infrastructure.persistence.portfolio_models import (  # noqa: E402, F401
-    PortfolioAlertModel,
-    PortfolioHoldingModel,
-    PortfolioLotModel,
-    PortfolioNewsDigestModel,
-    PortfolioQuoteModel,
-)
+import stonks_backend.infrastructure.persistence.cashflow_models  # noqa: E402, F401
+import stonks_backend.infrastructure.persistence.portfolio_models  # noqa: E402, F401

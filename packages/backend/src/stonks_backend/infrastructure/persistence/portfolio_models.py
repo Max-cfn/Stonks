@@ -124,10 +124,13 @@ class PortfolioLotModel(Base):
 class PortfolioQuoteModel(Base):
     """SQLAlchemy model for the 'portfolio_quotes' hypertable (TimescaleDB).
 
-    No primary key — hypertables do not support traditional PKs.
+    TimescaleDB hypertables do not support traditional primary keys,
+    so we declare a synthetic primary key via __mapper_args__ for
+    SQLAlchemy ORM compatibility without enforcing a PK constraint.
     """
 
     __tablename__ = "portfolio_quotes"
+    __mapper_args__ = {"primary_key": ("time", "ticker_symbol", "ticker_exchange")}
 
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ticker_symbol: Mapped[str] = mapped_column(String(10), nullable=False)

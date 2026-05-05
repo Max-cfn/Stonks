@@ -1,7 +1,9 @@
-"""Outils natifs de la flotte d'agents.
+"""
+FICHIER CORRIGÉ : /opt/stonks/agents_core/src/tools/__init__.py
 
-Tous ces outils sont des `@tool` LangChain — on peut les binder directement
-sur un ChatModel via `model.bind_tools([...])`.
+Changement principal :
+- gh_pr_merge RETIRÉ de ORCHESTRATOR_TOOLS (l'orchestrateur ne peut plus merger)
+- Ajout d'un commentaire explicite sur l'interdiction de merge automatique
 """
 
 from .file_tools import (
@@ -13,7 +15,7 @@ from .file_tools import (
 )
 from .git_tools import (
     gh_pr_create,
-    gh_pr_merge,
+    gh_pr_merge,  # conservé pour usage humain uniquement (UI Streamlit / REPL)
     git_branch,
     git_commit,
     git_diff,
@@ -43,6 +45,12 @@ from .shell_tools import shell_exec
 from .spawn_tools import spawn_agent
 
 # Toolsets prêts à binder selon le rôle.
+#
+# ⚠️ RÈGLE CRITIQUE (2026-05-05) :
+# gh_pr_merge est VOLONTAIREMENT absent des outils de l'orchestrateur
+# et des sous-agents. Le merge est une ACTION HUMAINE EXCLUSIVE.
+# Voir décision post-mortem PR feat(web) 2.4 mergée malgré CI rouge.
+
 ORCHESTRATOR_TOOLS = [
     file_read,
     file_write,
@@ -57,7 +65,7 @@ ORCHESTRATOR_TOOLS = [
     git_pull,
     git_diff,
     gh_pr_create,
-    gh_pr_merge,
+    # gh_pr_merge → RETIRÉ. Merge = humain uniquement.
     gitnexus_index,
     gitnexus_impact,
     gitnexus_query,
@@ -85,6 +93,7 @@ SUBAGENT_TOOLS = [
     git_push,
     git_diff,
     gh_pr_create,
+    # gh_pr_merge → RETIRÉ. Merge = humain uniquement.
     gh_pr_status,
     gh_pr_failed_logs,
     gh_wait_for_ci,
@@ -107,8 +116,15 @@ REVIEWER_TOOLS = [
     gitnexus_context,
 ]
 
+# Outil de merge accessible uniquement depuis l'UI Streamlit / le REPL humain.
+# Les agents (orchestrateur, sous-agents, reviewer) n'y ont PAS accès.
+HUMAN_ONLY_TOOLS = [
+    gh_pr_merge,
+]
+
 
 __all__ = [
+    "HUMAN_ONLY_TOOLS",
     "ORCHESTRATOR_TOOLS",
     "REVIEWER_TOOLS",
     "SUBAGENT_TOOLS",

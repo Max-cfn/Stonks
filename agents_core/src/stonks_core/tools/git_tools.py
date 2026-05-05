@@ -163,7 +163,19 @@ def gh_pr_create(title: str, body: str, base: str = "main", draft: bool = False)
 
 @tool
 def gh_pr_merge(number: int | None = None, squash: bool = True, delete_branch: bool = True) -> str:
-    """Merge une PR (la courante si number est None)."""
+    """Merge une PR (la courante si number est None). RESERVE A L'HUMAIN."""
+    import os
+
+    # HARD GATE (2026-05-05): seuls les appels explicitement "human" passent.
+    caller = os.environ.get("STONKS_CALLER", "agent")
+    if caller != "human":
+        return (
+            "BLOCKED: gh_pr_merge est reserve a l'humain (Max). "
+            "Les agents ne sont pas autorises a merger. "
+            "Job termine = CI 100% verte + Reviewer OK. "
+            "L'humain merge manuellement."
+        )
+
     log_event(agent="orchestrator", phase="ad_hoc", action="tool_call",
               tool="gh_pr_merge", input={"number": number, "squash": squash})
     args = ["gh", "pr", "merge"]

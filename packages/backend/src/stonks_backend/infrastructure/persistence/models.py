@@ -76,3 +76,13 @@ from stonks_backend.infrastructure.persistence.cashflow_models import (  # noqa:
     CashflowTransactionModel,
     CategorizationRuleModel,
 )
+
+# Import portfolio models so they are registered on Base.metadata
+# (required for Alembic autogenerate and schema introspection)
+from stonks_backend.infrastructure.persistence.portfolio_models import (  # noqa: E402, F401
+    PortfolioAlertModel,
+    PortfolioHoldingModel,
+    PortfolioLotModel,
+    PortfolioNewsDigestModel,
+    PortfolioQuoteModel,
+)

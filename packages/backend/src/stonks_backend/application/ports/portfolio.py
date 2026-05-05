@@ -441,6 +441,32 @@ class PortfolioRepositoryPort(ABC):
         """
         ...
 
+    # ── Workers helpers ───────────────────────────────────────────────────
+
+    @abstractmethod
+    async def get_active_tickers(self) -> list[Ticker]:
+        """Return distinct tickers from all holdings across all users.
+
+        Used by background workers (PricePoller) to know which instruments
+        to poll for current prices.
+
+        Returns:
+            List of unique Ticker objects (empty list if no holdings).
+        """
+        ...
+
+    @abstractmethod
+    async def get_active_user_ids(self) -> list[UUID]:
+        """Return distinct user IDs who have holdings or alerts.
+
+        Used by background workers (PricePoller) to scope alert checking
+        to users who actually use the platform.
+
+        Returns:
+            List of unique user UUIDs (empty list if no users with holdings/alerts).
+        """
+        ...
+
 
 __all__ = [
     # Data contracts

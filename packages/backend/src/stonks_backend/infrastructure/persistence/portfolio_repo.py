@@ -552,3 +552,70 @@ class PortfolioSqlRepository(PortfolioRepositoryPort):
             affected_tickers=m.affected_tickers,
             processed_at=m.processed_at,
         )
+
+    # ── Workers helpers ─────────────────────────────────────────────────
+
+    async def get_active_tickers(self) -> list[Ticker]:
+        """Return distinct tickers from all holdings across all users.
+
+        Returns:
+            List of unique Ticker objects (empty list if no holdings).
+        """
+        from sqlalchemy import distinct
+
+        stmt = select(
+            distinct(PortfolioHoldingModel.ticker_symbol),
+            PortfolioHoldingModel.ticker_exchange,
+        )
+        result = await self._session.execute(stmt)
+        tickers: list[Ticker] = []
+        for row in result.all():
+            symbol = row[0]
+            exchange_val = row[1]
+            exchange = Exchange(exchange_val) if exchange_val is not None else None
+            tickers.append(Ticker(symbol, exchange))
+        return tickers
+
+    async def get_active_user_ids(self) -> list[UUID]:
+        """Return distinct user IDs who have holdings or alerts.
+
+        Combines user IDs from portfolio_holdings and portfolio_alerts tables.
+
+        Returns:
+            List of unique user UUIDs (empty list if none).
+        """
+        stmt_holdings = select(PortfolioHoldingModel.user_id)
+        stmt_alerts = select(PortfolioAlertModel.user_id)
+        union_stmt = stmt_holdings.union(stmt_alerts)
+        result = await self._session.execute(union_stmt)
+        return [row[0] for row in result.all()]
+
+    async def aclose(self) -> None:
+        """Close the underlying database session.
+
+        Call this when the repository is no longer needed (e.g., at the end
+        of a worker poll cycle) to return the connection to the pool.
+        """
+        await self._session.close()
+
+    async def commit_and_close(self) -> None:
+        """Commit pending changes and close the session.
+
+        Safer alternative to aclose() when writes have been performed
+        (e.g. worker cycles that persist quotes/alerts/digests).
+        """
+        try:
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+        finally:
+            await self._session.close()
+
+    async def rollback_and_close(self) -> None:
+        """Rollback any pending changes and close the session.
+
+        Safe cleanup after an exception during a worker cycle.
+        """
+        await self._session.rollback()
+        await self._session.close()

@@ -17,23 +17,10 @@ from stonks_backend.domain.portfolio.quote import Quote
 from stonks_backend.domain.portfolio.ticker import Ticker
 from stonks_backend.domain.portfolio.trade import Trade
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Data contracts (part of the port — adapters produce/consume these shapes)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 
 @dataclass
 class NewsItem:
-    """A news article related to a financial instrument.
-
-    Attributes:
-        guid: Globally unique identifier for deduplication.
-        source: Provider or publisher name (e.g. 'bloomberg', 'reuters').
-        title: Article headline.
-        url: Link to the full article.
-        published_at: UTC datetime of publication.
-        summary: Optional short summary or excerpt.
-    """
+    """A news article related to a financial instrument."""
 
     guid: str
     source: str
@@ -72,11 +59,6 @@ class NewsDigest:
     summary: str
     affected_tickers: list[str] | None
     processed_at: datetime
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Abstract ports
-# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class PriceFeedPort(ABC):
@@ -156,8 +138,6 @@ class NewsFeedPort(ABC):
 class PortfolioRepositoryPort(ABC):
     """Abstract interface for portfolio data persistence."""
 
-    # ── Holdings ──────────────────────────────────────────────────────────
-
     @abstractmethod
     async def get_holdings(self, user_id: UUID) -> list[Holding]:
         """Retrieve all holdings for a user."""
@@ -178,8 +158,6 @@ class PortfolioRepositoryPort(ABC):
         """Remove a holding by ID."""
         ...
 
-    # ── Trades ────────────────────────────────────────────────────────────
-
     @abstractmethod
     async def save_trade(self, trade: Trade) -> None:
         """Persist a trade record."""
@@ -195,8 +173,6 @@ class PortfolioRepositoryPort(ABC):
         """Retrieve trades for a holding, optionally filtered by date range."""
         ...
 
-    # ── Quotes ────────────────────────────────────────────────────────────
-
     @abstractmethod
     async def save_quote(self, quote: Quote) -> None:
         """Persist a market quote."""
@@ -211,8 +187,6 @@ class PortfolioRepositoryPort(ABC):
     async def get_latest_quote(self, ticker: Ticker) -> Quote | None:
         """Retrieve the most recent persisted quote for a ticker."""
         ...
-
-    # ── Price alerts ──────────────────────────────────────────────────────
 
     @abstractmethod
     async def save_alert(self, alert: PriceAlert) -> None:
@@ -234,8 +208,6 @@ class PortfolioRepositoryPort(ABC):
         """Mark a price alert as triggered."""
         ...
 
-    # ── News digest ───────────────────────────────────────────────────────
-
     @abstractmethod
     async def save_news_digest(self, digest: NewsDigest) -> None:
         """Persist a news digest."""
@@ -245,8 +217,6 @@ class PortfolioRepositoryPort(ABC):
     async def get_latest_digest(self, user_id: UUID | None = None) -> NewsDigest | None:
         """Retrieve the most recent news digest."""
         ...
-
-    # ── Workers helpers ───────────────────────────────────────────────────
 
     @abstractmethod
     async def get_active_tickers(self) -> list[Ticker]:
@@ -264,6 +234,10 @@ class PortfolioRepositoryPort(ABC):
 
     async def commit_and_close(self) -> None:  # noqa: B027
         """Commit pending changes and close the session (no-op by default)."""
+        pass
+
+    async def rollback_and_close(self) -> None:  # noqa: B027
+        """Rollback pending changes and close the session (no-op by default)."""
         pass
 
 

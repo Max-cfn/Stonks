@@ -722,9 +722,7 @@ class TestTrade:
 
     def test_trade_validation_negative_dividend_amount(self) -> None:
         """Negative dividend_amount → TradeValidationError."""
-        with pytest.raises(
-            TradeValidationError, match="Dividend amount must be non-negative"
-        ):
+        with pytest.raises(TradeValidationError, match="Dividend amount must be non-negative"):
             Trade(
                 id=uuid4(),
                 holding_id=uuid4(),

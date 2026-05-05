@@ -92,12 +92,8 @@ class GetPortfolioValuation:
             )
 
         # ── Fetch current quotes in parallel ──────────────────────────
-        quote_tasks = {
-            h.ticker: self._price_feed.get_current(h.ticker) for h in holdings
-        }
-        quote_results = await asyncio.gather(
-            *quote_tasks.values(), return_exceptions=True
-        )
+        quote_tasks = {h.ticker: self._price_feed.get_current(h.ticker) for h in holdings}
+        quote_results = await asyncio.gather(*quote_tasks.values(), return_exceptions=True)
         quotes: dict = {}
         for ticker_key, result in zip(quote_tasks.keys(), quote_results, strict=False):
             if isinstance(result, Exception):
@@ -158,9 +154,7 @@ class GetPortfolioValuation:
         for hv in valuations:
             # Convert market value
             if hv.market_value.currency != target_currency:
-                rate = await self._fx_rate.get_rate(
-                    hv.market_value.currency, target_currency
-                )
+                rate = await self._fx_rate.get_rate(hv.market_value.currency, target_currency)
                 hv_market_amount = hv.market_value.amount * rate
             else:
                 hv_market_amount = hv.market_value.amount
@@ -168,9 +162,7 @@ class GetPortfolioValuation:
 
             # Convert P&L
             if hv.pnl.currency != target_currency:
-                rate_pnl = await self._fx_rate.get_rate(
-                    hv.pnl.currency, target_currency
-                )
+                rate_pnl = await self._fx_rate.get_rate(hv.pnl.currency, target_currency)
                 hv_pnl_amount = hv.pnl.amount * rate_pnl
             else:
                 hv_pnl_amount = hv.pnl.amount
@@ -179,22 +171,22 @@ class GetPortfolioValuation:
         # Set weights
         for hv in valuations:
             if hv.market_value.currency != target_currency:
-                rate = await self._fx_rate.get_rate(
-                    hv.market_value.currency, target_currency
-                )
+                rate = await self._fx_rate.get_rate(hv.market_value.currency, target_currency)
                 hv_market = hv.market_value.amount * rate
             else:
                 hv_market = hv.market_value.amount
-            hv.weight_pct = (hv_market / total_value_target) * Decimal("100") if total_value_target > 0 else Decimal("0")
+            hv.weight_pct = (
+                (hv_market / total_value_target) * Decimal("100")
+                if total_value_target > 0
+                else Decimal("0")
+            )
 
         # ── Total P&L % ───────────────────────────────────────────────
         total_cost_target = Decimal("0")
         for hv in valuations:
             cost = hv.holding.avg_cost * hv.holding.quantity
             if hv.market_value.currency != target_currency:
-                rate = await self._fx_rate.get_rate(
-                    hv.market_value.currency, target_currency
-                )
+                rate = await self._fx_rate.get_rate(hv.market_value.currency, target_currency)
                 total_cost_target += cost * rate
             else:
                 total_cost_target += cost

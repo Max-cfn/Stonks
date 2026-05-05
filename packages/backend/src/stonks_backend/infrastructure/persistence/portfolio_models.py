@@ -91,7 +91,10 @@ class PortfolioLotModel(Base):
     price: Mapped[Decimal] = mapped_column(Numeric(precision=24, scale=8), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     fees: Mapped[Decimal] = mapped_column(
-        Numeric(precision=24, scale=8), nullable=False, server_default=text("0"), default=Decimal("0")
+        Numeric(precision=24, scale=8),
+        nullable=False,
+        server_default=text("0"),
+        default=Decimal("0"),
     )
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
@@ -110,9 +113,7 @@ class PortfolioLotModel(Base):
         "PortfolioHoldingModel", back_populates="lots"
     )
 
-    __table_args__ = (
-        Index("ix_lots_holding_date", "holding_id", text("date")),
-    )
+    __table_args__ = (Index("ix_lots_holding_date", "holding_id", text("date")),)
 
     def __repr__(self) -> str:
         return (
@@ -130,7 +131,7 @@ class PortfolioQuoteModel(Base):
     """
 
     __tablename__ = "portfolio_quotes"
-    __mapper_args__ = {"primary_key": ("time", "ticker_symbol", "ticker_exchange")}
+    __mapper_args__ = {"primary_key": ("time", "ticker_symbol", "ticker_exchange")}  # noqa: RUF012
 
     time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ticker_symbol: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -185,9 +186,7 @@ class PortfolioAlertModel(Base):
         nullable=False,
     )
 
-    __table_args__ = (
-        Index("ix_alerts_user_triggered", "user_id", "triggered"),
-    )
+    __table_args__ = (Index("ix_alerts_user_triggered", "user_id", "triggered"),)
 
     def __repr__(self) -> str:
         return (
@@ -208,9 +207,7 @@ class PortfolioNewsDigestModel(Base):
     url: Mapped[str] = mapped_column(Text(), nullable=False)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     sentiment_label: Mapped[str] = mapped_column(String(16), nullable=False)
-    sentiment_score: Mapped[Decimal] = mapped_column(
-        Numeric(precision=5, scale=4), nullable=False
-    )
+    sentiment_score: Mapped[Decimal] = mapped_column(Numeric(precision=5, scale=4), nullable=False)
     summary: Mapped[str] = mapped_column(Text(), nullable=False)
     affected_tickers: Mapped[list[str] | None] = mapped_column(ARRAY(Text()), nullable=True)
     guid: Mapped[str] = mapped_column(String(256), nullable=False)

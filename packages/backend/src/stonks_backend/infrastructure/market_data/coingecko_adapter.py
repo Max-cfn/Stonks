@@ -148,22 +148,17 @@ class CoinGeckoAdapter(PriceFeedPort):
                 status=exc.response.status_code,
             )
             if exc.response.status_code == 429:
-                raise CoinGeckoError(
-                    f"CoinGecko rate limited for {coin_id}"
-                ) from exc
+                raise CoinGeckoError(f"CoinGecko rate limited for {coin_id}") from exc
             raise CoinGeckoError(
                 f"CoinGecko HTTP {exc.response.status_code} for {coin_id}"
             ) from exc
         except Exception as exc:
             logger.error("coingecko_unexpected_error", coin_id=coin_id, error=str(exc))
-            raise CoinGeckoError(
-                f"CoinGecko unexpected error for {coin_id}: {exc}"
-            ) from exc
+            raise CoinGeckoError(f"CoinGecko unexpected error for {coin_id}: {exc}") from exc
 
         if coin_id not in data:
             raise CoinGeckoError(
-                f"CoinGecko returned no data for coin_id={coin_id}; "
-                f"keys={list(data.keys())}"
+                f"CoinGecko returned no data for coin_id={coin_id}; keys={list(data.keys())}"
             )
 
         coin_data = data[coin_id]
@@ -196,9 +191,7 @@ class CoinGeckoAdapter(PriceFeedPort):
             volume=None,
         )
 
-    async def get_historical(
-        self, ticker: Ticker, since: datetime, until: datetime
-    ) -> list[Quote]:
+    async def get_historical(self, ticker: Ticker, since: datetime, until: datetime) -> list[Quote]:
         """Retrieve historical quotes from CoinGecko.
 
         Args:
@@ -229,9 +222,7 @@ class CoinGeckoAdapter(PriceFeedPort):
             data = resp.json()
         except httpx.TimeoutException:
             logger.error("coingecko_historical_timeout", coin_id=coin_id)
-            raise CoinGeckoError(
-                f"CoinGecko historical timeout for {coin_id}"
-            ) from None
+            raise CoinGeckoError(f"CoinGecko historical timeout for {coin_id}") from None
         except httpx.HTTPStatusError as exc:
             logger.error(
                 "coingecko_historical_http_error",

@@ -176,9 +176,7 @@ class PricePoller:
         if user_ids:
             try:
                 manage_alerts = ManageAlerts(repo)
-                triggered = await manage_alerts.check_and_trigger(
-                    self._price_feed, user_ids
-                )
+                triggered = await manage_alerts.check_and_trigger(self._price_feed, user_ids)
                 if triggered:
                     logger.info(
                         "price_poller_alerts_triggered",
@@ -188,6 +186,4 @@ class PricePoller:
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                logger.warning(
-                    "price_poller_alert_check_failed", error=str(exc)
-                )
+                logger.warning("price_poller_alert_check_failed", error=str(exc))

@@ -61,9 +61,7 @@ class Trade:
             raise TradeValidationError(f"Quantity must be positive, got {self.quantity}")
         if self.trade_type is TradeType.DIVIDEND:
             if self.price != Decimal("0"):
-                raise TradeValidationError(
-                    f"Price must be 0 for DIVIDEND trades, got {self.price}"
-                )
+                raise TradeValidationError(f"Price must be 0 for DIVIDEND trades, got {self.price}")
             if self.dividend_amount is not None and self.dividend_amount < 0:
                 raise TradeValidationError(
                     f"Dividend amount must be non-negative, got {self.dividend_amount}"

@@ -410,9 +410,7 @@ class TestSimulateGrowth:
 
     def test_simulate_growth_negative_monthly(self) -> None:
         """negative monthly_contrib → ValueError."""
-        with pytest.raises(
-            ValueError, match="Monthly contribution must be non-negative"
-        ):
+        with pytest.raises(ValueError, match="Monthly contribution must be non-negative"):
             SimulateCompoundGrowth.compute(
                 capital=Decimal("10000"),
                 monthly_contrib=Decimal("-500"),
@@ -565,9 +563,7 @@ class TestManageAlertsCheckAndTrigger:
         repo.get_alerts.return_value = [alert]
 
         price_feed = AsyncMock(spec=PriceFeedPort)
-        price_feed.get_current.return_value = _make_quote(
-            "AAPL", Exchange.NASDAQ, Decimal("105")
-        )
+        price_feed.get_current.return_value = _make_quote("AAPL", Exchange.NASDAQ, Decimal("105"))
 
         use_case = ManageAlerts(repo)
         triggered = await use_case.check_and_trigger(
@@ -596,9 +592,7 @@ class TestManageAlertsCheckAndTrigger:
         repo.get_alerts.return_value = [alert]
 
         price_feed = AsyncMock(spec=PriceFeedPort)
-        price_feed.get_current.return_value = _make_quote(
-            "AAPL", Exchange.NASDAQ, Decimal("85")
-        )
+        price_feed.get_current.return_value = _make_quote("AAPL", Exchange.NASDAQ, Decimal("85"))
 
         use_case = ManageAlerts(repo)
         triggered = await use_case.check_and_trigger(
@@ -626,9 +620,7 @@ class TestManageAlertsCheckAndTrigger:
         repo.get_alerts.return_value = [alert]
 
         price_feed = AsyncMock(spec=PriceFeedPort)
-        price_feed.get_current.return_value = _make_quote(
-            "AAPL", Exchange.NASDAQ, Decimal("95")
-        )
+        price_feed.get_current.return_value = _make_quote("AAPL", Exchange.NASDAQ, Decimal("95"))
 
         use_case = ManageAlerts(repo)
         triggered = await use_case.check_and_trigger(

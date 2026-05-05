@@ -97,9 +97,7 @@ class YahooFinanceAdapter(PriceFeedPort):
             return await self._get_current_yfinance(symbol, ticker)
         return await self._get_current_httpx(symbol, ticker)
 
-    async def get_historical(
-        self, ticker: Ticker, since: datetime, until: datetime
-    ) -> list[Quote]:
+    async def get_historical(self, ticker: Ticker, since: datetime, until: datetime) -> list[Quote]:
         """Retrieve historical quotes from Yahoo Finance.
 
         Args:
@@ -149,9 +147,7 @@ class YahooFinanceAdapter(PriceFeedPort):
             info = await asyncio.to_thread(self._yf_fetch_info, symbol)
         except Exception as exc:
             logger.error("yfinance_info_error", symbol=symbol, error=str(exc))
-            raise YahooFinanceError(
-                f"yfinance failed to fetch info for {symbol}: {exc}"
-            ) from exc
+            raise YahooFinanceError(f"yfinance failed to fetch info for {symbol}: {exc}") from exc
 
         price_raw = info.get("regularMarketPrice") or info.get("currentPrice") or 0
         bid_raw = info.get("bid")
@@ -187,13 +183,9 @@ class YahooFinanceAdapter(PriceFeedPort):
     ) -> list[Quote]:
         """Fetch historical quotes via yfinance library in a thread."""
         try:
-            df = await asyncio.to_thread(
-                self._yf_fetch_history, symbol, since, until
-            )
+            df = await asyncio.to_thread(self._yf_fetch_history, symbol, since, until)
         except Exception as exc:
-            logger.error(
-                "yfinance_history_error", symbol=symbol, error=str(exc)
-            )
+            logger.error("yfinance_history_error", symbol=symbol, error=str(exc))
             raise YahooFinanceError(
                 f"yfinance failed to fetch history for {symbol}: {exc}"
             ) from exc
@@ -224,9 +216,7 @@ class YahooFinanceAdapter(PriceFeedPort):
         return quotes
 
     @staticmethod
-    def _yf_fetch_history(
-        symbol: str, since: datetime, until: datetime
-    ) -> Any:
+    def _yf_fetch_history(symbol: str, since: datetime, until: datetime) -> Any:
         """Sync method to fetch yfinance history (called via to_thread)."""
         tk = yf.Ticker(symbol)
         return tk.history(start=since, end=until)  # type: ignore[no-any-return]
@@ -250,9 +240,7 @@ class YahooFinanceAdapter(PriceFeedPort):
                 f"Yahoo v8 HTTP {exc.response.status_code} for {symbol}"
             ) from exc
         except Exception as exc:
-            raise YahooFinanceError(
-                f"Yahoo v8 unexpected error for {symbol}: {exc}"
-            ) from exc
+            raise YahooFinanceError(f"Yahoo v8 unexpected error for {symbol}: {exc}") from exc
 
         result = data.get("chart", {}).get("result", [])
         if not result:
@@ -305,9 +293,7 @@ class YahooFinanceAdapter(PriceFeedPort):
             resp.raise_for_status()
             data = resp.json()
         except httpx.TimeoutException:
-            raise YahooFinanceError(
-                f"Yahoo v8 historical timeout for {symbol}"
-            ) from None
+            raise YahooFinanceError(f"Yahoo v8 historical timeout for {symbol}") from None
         except httpx.HTTPStatusError as exc:
             raise YahooFinanceError(
                 f"Yahoo v8 historical HTTP {exc.response.status_code} for {symbol}"

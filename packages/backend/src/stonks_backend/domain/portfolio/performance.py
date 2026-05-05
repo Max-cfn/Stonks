@@ -146,9 +146,7 @@ def _newton_raphson(
         if rate <= Decimal("-0.999"):
             rate = Decimal("-0.5")
 
-    raise PerformanceError(
-        f"Newton-Raphson did not converge after {max_iterations} iterations"
-    )
+    raise PerformanceError(f"Newton-Raphson did not converge after {max_iterations} iterations")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -212,13 +210,9 @@ class CompoundReturn:
                 intermediate portfolio value is non-positive.
         """
         if start_value <= 0:
-            raise PerformanceError(
-                f"Start value must be positive, got {start_value}"
-            )
+            raise PerformanceError(f"Start value must be positive, got {start_value}")
         if end_value <= 0:
-            raise PerformanceError(
-                f"End value must be positive, got {end_value}"
-            )
+            raise PerformanceError(f"End value must be positive, got {end_value}")
 
         sorted_cfs = sorted(cashflows, key=lambda x: x[0])
 
@@ -261,11 +255,9 @@ class CompoundReturn:
 
         # Annualize: (1 + R_cum)^(365 / days) - 1
         if days > 0 and cumulative_return > Decimal("-1"):
-            annualized = (
-                (Decimal("1") + cumulative_return)
-                ** (Decimal("365") / Decimal(str(days)))
-                - Decimal("1")
-            )
+            annualized = (Decimal("1") + cumulative_return) ** (
+                Decimal("365") / Decimal(str(days))
+            ) - Decimal("1")
             return annualized
         return cumulative_return
 
@@ -304,9 +296,7 @@ class CompoundReturn:
                 or the solver does not converge.
         """
         if final_value <= 0:
-            raise PerformanceError(
-                f"Final value must be positive, got {final_value}"
-            )
+            raise PerformanceError(f"Final value must be positive, got {final_value}")
         if not cashflows:
             raise PerformanceError("At least one cashflow is required for MWR")
 
@@ -322,9 +312,7 @@ class CompoundReturn:
         if all(d == 0 for d in days_to_end):
             total_invested = sum(amount for _, amount in sorted_cfs)
             if total_invested == 0:
-                raise PerformanceError(
-                    "Sum of cashflows is zero; cannot compute MWR"
-                )
+                raise PerformanceError("Sum of cashflows is zero; cannot compute MWR")
             raw_return = (final_value - total_invested) / total_invested
             return raw_return
 
@@ -348,9 +336,7 @@ class CompoundReturn:
                 )
                 return Decimal(str(result_float))
             except RuntimeError as exc:
-                raise PerformanceError(
-                    f"scipy.newton failed to converge: {exc}"
-                ) from exc
+                raise PerformanceError(f"scipy.newton failed to converge: {exc}") from exc
         else:
             return _newton_raphson(sorted_cfs, final_value, days_to_end)
 
@@ -387,29 +373,21 @@ class CompoundReturn:
         start_value = Decimal("0")
         for h in holdings:
             if h.ticker not in quotes_start:
-                raise PerformanceError(
-                    f"No start quote for ticker {h.ticker}"
-                )
+                raise PerformanceError(f"No start quote for ticker {h.ticker}")
             start_value += h.current_value(quotes_start[h.ticker]).amount
 
         if start_value <= 0:
-            raise PerformanceError(
-                f"Start portfolio value must be positive, got {start_value}"
-            )
+            raise PerformanceError(f"Start portfolio value must be positive, got {start_value}")
 
         # Compute end value
         end_value = Decimal("0")
         for h in holdings:
             if h.ticker not in quotes_end:
-                raise PerformanceError(
-                    f"No end quote for ticker {h.ticker}"
-                )
+                raise PerformanceError(f"No end quote for ticker {h.ticker}")
             end_value += h.current_value(quotes_end[h.ticker]).amount
 
         if end_value <= 0:
-            raise PerformanceError(
-                f"End portfolio value must be positive, got {end_value}"
-            )
+            raise PerformanceError(f"End portfolio value must be positive, got {end_value}")
 
         cfs = cashflows or []
         return CompoundReturn.twr(start_value, cfs, end_value)

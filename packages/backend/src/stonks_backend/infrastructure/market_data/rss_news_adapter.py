@@ -140,9 +140,7 @@ class RssNewsAdapter(NewsFeedPort):
 
         if sources is not None:
             source_set = set(sources)
-            feeds_to_fetch = [
-                f for f in self._feeds if f["source"] in source_set
-            ]
+            feeds_to_fetch = [f for f in self._feeds if f["source"] in source_set]
         else:
             feeds_to_fetch = list(self._feeds)
 
@@ -193,9 +191,7 @@ class RssNewsAdapter(NewsFeedPort):
 
     # ── Private helpers ───────────────────────────────────────────────────
 
-    async def _fetch_single_feed(
-        self, feed: dict[str, str]
-    ) -> list[NewsItem]:
+    async def _fetch_single_feed(self, feed: dict[str, str]) -> list[NewsItem]:
         """Fetch and parse a single RSS feed.
 
         Strategy:
@@ -261,6 +257,7 @@ class RssNewsAdapter(NewsFeedPort):
             # Strip HTML from summary
             if summary:
                 import re
+
                 summary = re.sub(r"<[^>]+>", "", summary)
                 summary = summary.strip()
 

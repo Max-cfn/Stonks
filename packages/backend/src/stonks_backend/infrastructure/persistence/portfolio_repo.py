@@ -87,7 +87,9 @@ class PortfolioSqlRepository(PortfolioRepositoryPort):
         Args:
             holding: The Holding domain object to persist.
         """
-        ticker_exchange = holding.ticker.exchange.value if holding.ticker.exchange is not None else None
+        ticker_exchange = (
+            holding.ticker.exchange.value if holding.ticker.exchange is not None else None
+        )
 
         stmt = insert(PortfolioHoldingModel).values(
             id=holding.id,
@@ -176,9 +178,7 @@ class PortfolioSqlRepository(PortfolioRepositoryPort):
         self._session.add(model)
         await self._session.flush()
 
-    async def get_quotes(
-        self, ticker: Ticker, since: datetime, until: datetime
-    ) -> list[Quote]:
+    async def get_quotes(self, ticker: Ticker, since: datetime, until: datetime) -> list[Quote]:
         """Retrieve persisted quotes for a ticker in a date range.
 
         Args:
@@ -242,9 +242,7 @@ class PortfolioSqlRepository(PortfolioRepositoryPort):
         self._session.add(model)
         await self._session.flush()
 
-    async def get_alerts(
-        self, user_id: UUID, triggered: bool | None = None
-    ) -> list[PriceAlert]:
+    async def get_alerts(self, user_id: UUID, triggered: bool | None = None) -> list[PriceAlert]:
         """Retrieve price alerts for a user, optionally filtered by triggered status.
 
         Args:
@@ -303,9 +301,7 @@ class PortfolioSqlRepository(PortfolioRepositoryPort):
         self._session.add(model)
         await self._session.flush()
 
-    async def get_latest_digest(
-        self, user_id: UUID | None = None
-    ) -> NewsDigest | None:
+    async def get_latest_digest(self, user_id: UUID | None = None) -> NewsDigest | None:
         """Retrieve the most recent news digest (global scope).
 
         Args:

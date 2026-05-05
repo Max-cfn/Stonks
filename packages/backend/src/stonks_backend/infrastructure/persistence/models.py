@@ -73,5 +73,5 @@ class AuditLogModel(Base):
 # Using `import module` instead of `from module import Symbol` avoids
 # circular import errors between models.py ↔ portfolio_models.py.
 
-import stonks_backend.infrastructure.persistence.cashflow_models  # noqa: E402, F401
+import stonks_backend.infrastructure.persistence.cashflow_models  # noqa: E402
 import stonks_backend.infrastructure.persistence.portfolio_models  # noqa: E402, F401

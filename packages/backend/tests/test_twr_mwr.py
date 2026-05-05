@@ -40,9 +40,7 @@ class TestTWRNoCashflows:
             end_value=Decimal("11000"),
         )
         expected = Decimal("0.10")
-        assert abs(result - expected) < TWR_TOLERANCE, (
-            f"Expected {expected}, got {result}"
-        )
+        assert abs(result - expected) < TWR_TOLERANCE, f"Expected {expected}, got {result}"
 
     def test_simple_loss(self) -> None:
         """start=10000, no cashflows, end=9500 -> TWR = -5%."""
@@ -52,9 +50,7 @@ class TestTWRNoCashflows:
             end_value=Decimal("9500"),
         )
         expected = Decimal("-0.05")
-        assert abs(result - expected) < TWR_TOLERANCE, (
-            f"Expected {expected}, got {result}"
-        )
+        assert abs(result - expected) < TWR_TOLERANCE, f"Expected {expected}, got {result}"
 
     def test_zero_return(self) -> None:
         """start=10000, no cashflows, end=10000 -> TWR = 0%."""
@@ -64,9 +60,7 @@ class TestTWRNoCashflows:
             end_value=Decimal("10000"),
         )
         expected = Decimal("0")
-        assert abs(result - expected) < TWR_TOLERANCE, (
-            f"Expected {expected}, got {result}"
-        )
+        assert abs(result - expected) < TWR_TOLERANCE, f"Expected {expected}, got {result}"
 
     def test_start_value_zero_raises(self) -> None:
         """start=0 should raise PerformanceError."""
@@ -102,9 +96,7 @@ class TestTWRWithDeposit:
         )
         # Non-annualized (single cashflow, no date range)
         expected = Decimal("0.2375")
-        assert abs(result - expected) < TWR_TOLERANCE, (
-            f"Expected {expected}, got {result}"
-        )
+        assert abs(result - expected) < TWR_TOLERANCE, f"Expected {expected}, got {result}"
 
 
 class TestTWRWithWithdrawal:
@@ -130,9 +122,7 @@ class TestTWRWithWithdrawal:
             end_value=Decimal("13200"),
         )
         expected = Decimal("0.21")
-        assert abs(result - expected) < TWR_TOLERANCE, (
-            f"Expected {expected}, got {result}"
-        )
+        assert abs(result - expected) < TWR_TOLERANCE, f"Expected {expected}, got {result}"
 
 
 class TestTWRMultipleSubperiods:
@@ -178,17 +168,9 @@ class TestTWRMultipleSubperiods:
             end_value=Decimal("20000"),
         )
         # Raw compounded (using exact Decimal math)
-        raw = (
-            Decimal("10500")
-            / Decimal("10000")
-            * Decimal("14000")
-            / Decimal("13500")
-            * Decimal("13000")
-            / Decimal("12000")
-            * Decimal("20000")
-            / Decimal("18000")
-            - Decimal("1")
-        )
+        raw = Decimal("10500") / Decimal("10000") * Decimal("14000") / Decimal("13500") * Decimal(
+            "13000"
+        ) / Decimal("12000") * Decimal("20000") / Decimal("18000") - Decimal("1")
 
         # Days: 2023-01-01 to 2024-02-05 = 400 days
         total_days_decimal = Decimal("400")
@@ -234,9 +216,7 @@ class TestMWRSimple:
             final_value=Decimal("11000"),
         )
         expected = Decimal("0.10")
-        assert abs(result - expected) < MWR_TOLERANCE, (
-            f"Expected {expected}, got {result}"
-        )
+        assert abs(result - expected) < MWR_TOLERANCE, f"Expected {expected}, got {result}"
 
 
 class TestMWRMultipleCashflows:
@@ -272,9 +252,7 @@ class TestMWRMultipleCashflows:
             f"IRR {result} does not price cashflows back to 11000 (got {total})"
         )
         # IRR should be > 10% since later deposits have less compounding time
-        assert result > Decimal("0.10"), (
-            f"Expected IRR > 10% for quarterly deposits, got {result}"
-        )
+        assert result > Decimal("0.10"), f"Expected IRR > 10% for quarterly deposits, got {result}"
 
 
 class TestMWRZeroValue:
@@ -314,9 +292,7 @@ class TestMWRNegativeRate:
             final_value=Decimal("9000"),
         )
         expected = Decimal("-0.10")
-        assert abs(result - expected) < MWR_TOLERANCE, (
-            f"Expected {expected}, got {result}"
-        )
+        assert abs(result - expected) < MWR_TOLERANCE, f"Expected {expected}, got {result}"
 
     def test_negative_return_multi_flow(self) -> None:
         """Two deposits totaling 20000, final 18000 -> negative IRR."""
@@ -329,9 +305,7 @@ class TestMWRNegativeRate:
             final_value=Decimal("18000"),
         )
         # Should be negative since 20000 -> 18000
-        assert result < Decimal("0"), (
-            f"Expected negative IRR, got {result}"
-        )
+        assert result < Decimal("0"), f"Expected negative IRR, got {result}"
         # Verify the equation holds
         t_n = cashflows[-1][0]
         total = Decimal("0")

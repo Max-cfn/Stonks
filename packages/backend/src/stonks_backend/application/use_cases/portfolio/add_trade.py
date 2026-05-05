@@ -113,9 +113,7 @@ class AddTrade:
             if new_qty == 0:
                 new_avg = Decimal("0")
             else:
-                new_avg = (
-                    holding.quantity * holding.avg_cost + quantity * price
-                ) / new_qty
+                new_avg = (holding.quantity * holding.avg_cost + quantity * price) / new_qty
             holding = Holding(
                 id=holding.id,
                 user_id=holding.user_id,
@@ -150,13 +148,9 @@ class AddTrade:
 
         elif tt is TradeType.DIVIDEND:
             if quantity != Decimal("0"):
-                raise AddTradeError(
-                    f"DIVIDEND quantity must be zero, got {quantity}"
-                )
+                raise AddTradeError(f"DIVIDEND quantity must be zero, got {quantity}")
             if price < Decimal("0"):
-                raise AddTradeError(
-                    f"DIVIDEND price must be non-negative, got {price}"
-                )
+                raise AddTradeError(f"DIVIDEND price must be non-negative, got {price}")
             # Holding unchanged; dividend_amount stored on Trade
             dividend_amount = price  # price field carries the dividend amount per share or total
             new_qty = holding.quantity

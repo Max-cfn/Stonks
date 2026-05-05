@@ -72,19 +72,13 @@ class SimulateCompoundGrowth:
         if capital < 0:
             raise ValueError(f"Capital must be non-negative, got {capital}")
         if monthly_contrib < 0:
-            raise ValueError(
-                f"Monthly contribution must be non-negative, got {monthly_contrib}"
-            )
+            raise ValueError(f"Monthly contribution must be non-negative, got {monthly_contrib}")
         if annual_rate <= Decimal("-1"):
-            raise ValueError(
-                f"Annual rate must be > -1 (cannot lose >100%), got {annual_rate}"
-            )
+            raise ValueError(f"Annual rate must be > -1 (cannot lose >100%), got {annual_rate}")
 
         # Build scenario list
         scenario_defs: list[dict] = (
-            scenarios
-            if scenarios
-            else [{"name": "Default", "rate": str(annual_rate)}]
+            scenarios if scenarios else [{"name": "Default", "rate": str(annual_rate)}]
         )
 
         result_scenarios: list[GrowthScenario] = []
@@ -101,9 +95,7 @@ class SimulateCompoundGrowth:
                 rate = Decimal(raw_rate)  # type: ignore[arg-type]
 
             if rate <= Decimal("-1"):
-                raise ValueError(
-                    f"Scenario '{name}': rate must be > -1, got {rate}"
-                )
+                raise ValueError(f"Scenario '{name}': rate must be > -1, got {rate}")
 
             monthly_rate = rate / _MONTHS_PER_YEAR
 

@@ -216,9 +216,7 @@ async def test_get_holdings_endpoint(
     """GET /portfolio/holdings → 200 with valuation data."""
     holding = _make_holding("AAPL", Exchange.NASDAQ, Decimal("10"), Decimal("100"))
     mock_repo.get_holdings.return_value = [holding]
-    mock_price_feed.get_current.return_value = _make_quote(
-        "AAPL", Exchange.NASDAQ, Decimal("150")
-    )
+    mock_price_feed.get_current.return_value = _make_quote("AAPL", Exchange.NASDAQ, Decimal("150"))
     mock_fx_rate.get_rate.return_value = Decimal("1")
 
     resp = await client.get("/portfolio/holdings")
@@ -460,9 +458,7 @@ async def unauthenticated_client() -> AsyncClient:
     app = create_app()
 
     # Only override DB deps (not auth) so auth check fails
-    app.dependency_overrides[get_portfolio_repo] = lambda: AsyncMock(
-        spec=PortfolioRepositoryPort
-    )
+    app.dependency_overrides[get_portfolio_repo] = lambda: AsyncMock(spec=PortfolioRepositoryPort)
     app.dependency_overrides[get_price_feed] = lambda: AsyncMock(spec=PriceFeedPort)
     app.dependency_overrides[get_fx_rate] = lambda: AsyncMock(spec=FxRatePort)
 

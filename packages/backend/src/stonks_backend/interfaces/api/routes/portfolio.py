@@ -203,7 +203,7 @@ async def add_trade(
         id=str(trade.id),
         holding_id=str(trade.holding_id),
         trade_type=trade.trade_type.value,
-        ticker_symbol=trade.ticker.symbol if hasattr(trade, 'ticker') else body.ticker_symbol,
+        ticker_symbol=trade.ticker.symbol if hasattr(trade, "ticker") else body.ticker_symbol,
         ticker_exchange=body.ticker_exchange,
         quantity=str(trade.quantity),
         price=str(trade.price),
@@ -266,12 +266,8 @@ async def get_holdings(
                 market_value_currency=hv.market_value.currency,
                 pnl=str(hv.pnl.amount),
                 pnl_currency=hv.pnl.currency,
-                pnl_pct=str(
-                    hv.pnl_pct.quantize(Decimal("0.01"))
-                ),
-                weight_pct=str(
-                    hv.weight_pct.quantize(Decimal("0.01"))
-                ),
+                pnl_pct=str(hv.pnl_pct.quantize(Decimal("0.01"))),
+                weight_pct=str(hv.weight_pct.quantize(Decimal("0.01"))),
                 quote_source=hv.quote.source,
                 quote_timestamp=hv.quote.timestamp.isoformat(),
             )
@@ -279,15 +275,9 @@ async def get_holdings(
 
     return HoldingsValuationResponse(
         holdings=holdings_items,
-        total_value=str(
-            valuation.total_value.amount.quantize(Decimal("0.01"))
-        ),
-        total_pnl=str(
-            valuation.total_pnl.amount.quantize(Decimal("0.01"))
-        ),
-        total_pnl_pct=str(
-            valuation.total_pnl_pct.quantize(Decimal("0.01"))
-        ),
+        total_value=str(valuation.total_value.amount.quantize(Decimal("0.01"))),
+        total_pnl=str(valuation.total_pnl.amount.quantize(Decimal("0.01"))),
+        total_pnl_pct=str(valuation.total_pnl_pct.quantize(Decimal("0.01"))),
         currency=valuation.currency,
         as_of=valuation.as_of.isoformat(),
     )
@@ -331,9 +321,7 @@ async def get_performance(
     return PerformanceResponse(
         period=result.period,
         twr=str(result.twr.quantize(Decimal("0.0001"))),
-        mwr=str(result.mwr.quantize(Decimal("0.0001")))
-        if result.mwr is not None
-        else None,
+        mwr=str(result.mwr.quantize(Decimal("0.0001"))) if result.mwr is not None else None,
         start_value=str(result.start_value.amount),
         start_value_currency=result.start_value.currency,
         end_value=str(result.end_value.amount),
@@ -431,9 +419,7 @@ async def create_alert(
     return AlertResponse(
         id=str(alert.id),
         ticker_symbol=alert.ticker.symbol,
-        ticker_exchange=alert.ticker.exchange.value
-        if alert.ticker.exchange
-        else None,
+        ticker_exchange=alert.ticker.exchange.value if alert.ticker.exchange else None,
         threshold=str(alert.threshold),
         direction=alert.direction,
         webhook_url=alert.webhook_url,
@@ -465,9 +451,7 @@ async def list_alerts(
             AlertResponse(
                 id=str(a.id),
                 ticker_symbol=a.ticker.symbol,
-                ticker_exchange=a.ticker.exchange.value
-                if a.ticker.exchange
-                else None,
+                ticker_exchange=a.ticker.exchange.value if a.ticker.exchange else None,
                 threshold=str(a.threshold),
                 direction=a.direction,
                 webhook_url=a.webhook_url,
@@ -673,9 +657,7 @@ async def portfolio_stream(
         while True:
             # Non-blocking receive with timeout
             try:
-                data = await asyncio.wait_for(
-                    websocket.receive_text(), timeout=30.0
-                )
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
             except TimeoutError:
                 # No message from client — send price updates
                 data = None
@@ -685,9 +667,7 @@ async def portfolio_stream(
                 try:
                     msg = json.loads(data)
                 except json.JSONDecodeError:
-                    await websocket.send_json(
-                        {"type": "error", "detail": "Invalid JSON"}
-                    )
+                    await websocket.send_json({"type": "error", "detail": "Invalid JSON"})
                     continue
 
                 action = msg.get("action", "")

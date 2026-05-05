@@ -39,9 +39,7 @@ class ComputePerformance:
         self._repo = repo
         self._calc = compound_return
 
-    async def execute(
-        self, user_id: UUID, period: str = "YTD"
-    ) -> PerformanceResult:
+    async def execute(self, user_id: UUID, period: str = "YTD") -> PerformanceResult:
         """Compute TWR and MWR for the given period.
 
         Args:
@@ -58,8 +56,7 @@ class ComputePerformance:
         """
         if period.upper() not in _VALID_PERIODS:
             raise ValueError(
-                f"Invalid period '{period}'. Must be one of: "
-                f"{', '.join(sorted(_VALID_PERIODS))}"
+                f"Invalid period '{period}'. Must be one of: {', '.join(sorted(_VALID_PERIODS))}"
             )
         period = period.upper()
 

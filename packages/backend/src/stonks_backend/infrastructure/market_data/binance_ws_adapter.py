@@ -63,9 +63,7 @@ class BinanceWebSocketAdapter(PriceFeedPort):
             "Use CoinGeckoAdapter or YahooFinanceAdapter."
         )
 
-    async def get_historical(
-        self, ticker: Ticker, since: datetime, until: datetime
-    ) -> list[Quote]:
+    async def get_historical(self, ticker: Ticker, since: datetime, until: datetime) -> list[Quote]:
         """Historical data — not supported by WebSocket adapter.
 
         Raises:

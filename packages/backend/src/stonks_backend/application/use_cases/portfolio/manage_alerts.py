@@ -72,9 +72,7 @@ class ManageAlerts:
                 f"{', '.join(sorted(_VALID_DIRECTIONS))}"
             )
         if threshold <= 0:
-            raise ManageAlertsError(
-                f"Threshold must be positive, got {threshold}"
-            )
+            raise ManageAlertsError(f"Threshold must be positive, got {threshold}")
         if not webhook_url.strip():
             raise ManageAlertsError("Webhook URL must not be empty")
 

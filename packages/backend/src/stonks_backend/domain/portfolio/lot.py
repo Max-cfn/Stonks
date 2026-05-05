@@ -54,9 +54,7 @@ class Lot:
         if self.fees < 0:
             raise LotValidationError(f"Fees must be non-negative, got {self.fees}")
         if self.trade_type not in ("buy", "sell"):
-            raise LotValidationError(
-                f"trade_type must be 'buy' or 'sell', got {self.trade_type!r}"
-            )
+            raise LotValidationError(f"trade_type must be 'buy' or 'sell', got {self.trade_type!r}")
 
     def cost_basis(self) -> Money:
         """Compute the total cost basis including fees.

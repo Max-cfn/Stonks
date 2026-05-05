@@ -32,14 +32,46 @@ _LLM_TIMEOUT = 15.0
 
 # ── Keyword-based fallback ────────────────────────────────────────────────
 _POSITIVE_KEYWORDS: list[str] = [
-    "surge", "rally", "jump", "soar", "record high", "beat", "upgrade",
-    "bullish", "outperform", "strong", "growth", "profit", "gain", "boost",
-    "optimistic", "raised guidance", "dividend increase", "buyback",
+    "surge",
+    "rally",
+    "jump",
+    "soar",
+    "record high",
+    "beat",
+    "upgrade",
+    "bullish",
+    "outperform",
+    "strong",
+    "growth",
+    "profit",
+    "gain",
+    "boost",
+    "optimistic",
+    "raised guidance",
+    "dividend increase",
+    "buyback",
 ]
 _NEGATIVE_KEYWORDS: list[str] = [
-    "plunge", "crash", "tumble", "sink", "drop", "decline", "loss", "downgrade",
-    "bearish", "underperform", "weak", "recession", "layoff", "bankruptcy",
-    "lawsuit", "fine", "penalty", "default", "cut guidance", "sell-off",
+    "plunge",
+    "crash",
+    "tumble",
+    "sink",
+    "drop",
+    "decline",
+    "loss",
+    "downgrade",
+    "bearish",
+    "underperform",
+    "weak",
+    "recession",
+    "layoff",
+    "bankruptcy",
+    "lawsuit",
+    "fine",
+    "penalty",
+    "default",
+    "cut guidance",
+    "sell-off",
 ]
 
 # ── Ticker extraction regex ───────────────────────────────────────────────
@@ -67,9 +99,7 @@ class AnalyzeMarketSentiment:
         self._repo = repo
         self._settings = get_settings()
 
-    async def execute(
-        self, since: datetime | None = None
-    ) -> NewsDigest:
+    async def execute(self, since: datetime | None = None) -> NewsDigest:
         """Fetch, analyse, and persist a news sentiment digest.
 
         Workflow:
@@ -150,9 +180,9 @@ class AnalyzeMarketSentiment:
             )
 
         # ── Build digest summary ──────────────────────────────────────
-        avg_score = sum(
-            (p["sentiment_score"] for p in processed_items), Decimal("0")
-        ) / Decimal(str(len(processed_items)))
+        avg_score = sum((p["sentiment_score"] for p in processed_items), Decimal("0")) / Decimal(
+            str(len(processed_items))
+        )
 
         if avg_score > Decimal("0.2"):
             overall_label = "positive"
@@ -162,9 +192,7 @@ class AnalyzeMarketSentiment:
             overall_label = "neutral"
 
         # Concatenate top headlines as digest summary
-        digest_summary = "; ".join(
-            p["title"] for p in processed_items[:5]
-        )
+        digest_summary = "; ".join(p["title"] for p in processed_items[:5])
 
         # Collect all affected tickers
         all_tickers: list[str] = []
@@ -206,9 +234,7 @@ class AnalyzeMarketSentiment:
 
     # ── LLM sentiment (OpenRouter) ────────────────────────────────────────
 
-    async def _llm_sentiment(
-        self, title: str, summary: str
-    ) -> dict:
+    async def _llm_sentiment(self, title: str, summary: str) -> dict:
         """Call OpenRouter LLM for sentiment classification.
 
         Args:
@@ -244,9 +270,7 @@ class AnalyzeMarketSentiment:
 
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(_LLM_TIMEOUT)) as client:
-                resp = await client.post(
-                    _OPENROUTER_URL, json=payload, headers=headers
-                )
+                resp = await client.post(_OPENROUTER_URL, json=payload, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
         except httpx.TimeoutException:
@@ -352,13 +376,53 @@ class AnalyzeMarketSentiment:
         text = f"{title} {summary}"
         raw_matches = _TICKER_RE.findall(text)
 
-        excludes: frozenset[str] = frozenset({
-            "A", "I", "AM", "PM", "US", "UK", "EU", "CEO", "CFO", "IPO",
-            "ETF", "GDP", "CPI", "FED", "ECB", "IMF", "YTD", "Q1", "Q2",
-            "Q3", "Q4", "AI", "IT", "HR", "PR", "R&D", "ESG", "FX",
-            "THE", "AND", "FOR", "ARE", "BUT", "NOT", "WAS", "HAS",
-            "NEW", "NOW", "ONE", "TWO", "ALL", "ALSO", "JUST",
-        })
+        excludes: frozenset[str] = frozenset(
+            {
+                "A",
+                "I",
+                "AM",
+                "PM",
+                "US",
+                "UK",
+                "EU",
+                "CEO",
+                "CFO",
+                "IPO",
+                "ETF",
+                "GDP",
+                "CPI",
+                "FED",
+                "ECB",
+                "IMF",
+                "YTD",
+                "Q1",
+                "Q2",
+                "Q3",
+                "Q4",
+                "AI",
+                "IT",
+                "HR",
+                "PR",
+                "R&D",
+                "ESG",
+                "FX",
+                "THE",
+                "AND",
+                "FOR",
+                "ARE",
+                "BUT",
+                "NOT",
+                "WAS",
+                "HAS",
+                "NEW",
+                "NOW",
+                "ONE",
+                "TWO",
+                "ALL",
+                "ALSO",
+                "JUST",
+            }
+        )
 
         seen: set[str] = set()
         result: list[str] = []

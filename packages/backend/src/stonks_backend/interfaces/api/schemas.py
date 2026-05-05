@@ -110,6 +110,7 @@ class CashflowSummaryResponse(BaseModel):
     total_balance: str | None = None
     categories: list[CategoryResponse]
 
+
 # ── Portfolio ──────────────────────────────────────────────────────
 
 

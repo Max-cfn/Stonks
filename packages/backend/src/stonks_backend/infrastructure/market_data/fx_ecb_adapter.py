@@ -23,12 +23,8 @@ from stonks_backend.infrastructure.config import Settings
 logger = structlog.get_logger(__name__)
 
 # ── ECB endpoints ─────────────────────────────────────────────────────────
-_ECB_DAILY_URL = (
-    "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
-)
-_ECB_HISTORICAL_URL = (
-    "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
-)
+_ECB_DAILY_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+_ECB_HISTORICAL_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
 
 # ── Cache ─────────────────────────────────────────────────────────────────
 _CACHE_TTL_SECONDS = 24 * 3600  # 24h
@@ -203,9 +199,7 @@ class FxRateECBAdapter(FxRatePort):
             if self._daily_cache:
                 logger.warning("ecb_using_stale_daily_cache")
                 return self._daily_cache
-            raise FxRateECBError(
-                f"ECB daily XML HTTP {exc.response.status_code}"
-            ) from exc
+            raise FxRateECBError(f"ECB daily XML HTTP {exc.response.status_code}") from exc
         except Exception as exc:
             logger.error("ecb_daily_unexpected_error", error=str(exc))
             if self._daily_cache:
@@ -252,9 +246,7 @@ class FxRateECBAdapter(FxRatePort):
             if any(self._historical_cache):
                 logger.warning("ecb_using_stale_historical_cache")
                 return self._flatten_historical_cache()
-            raise FxRateECBError(
-                f"ECB historical XML HTTP {exc.response.status_code}"
-            ) from exc
+            raise FxRateECBError(f"ECB historical XML HTTP {exc.response.status_code}") from exc
         except Exception as exc:
             logger.error("ecb_historical_unexpected_error", error=str(exc))
             if any(self._historical_cache):
@@ -370,9 +362,7 @@ class FxRateECBAdapter(FxRatePort):
     # ── Rate conversion ───────────────────────────────────────────────────
 
     @staticmethod
-    def _convert_rate(
-        rates: dict[str, Decimal], from_cur: str, to_cur: str
-    ) -> Decimal:
+    def _convert_rate(rates: dict[str, Decimal], from_cur: str, to_cur: str) -> Decimal:
         """Convert between two currencies via EUR pivot.
 
         Both from_cur and to_cur must be present in rates.

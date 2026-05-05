@@ -67,9 +67,7 @@ class Ticker:
                 f"Ticker symbol exceeds {_MAX_SYMBOL_LENGTH} characters: {s!r}"
             )
         if not s.replace(".", "").replace("-", "").isalnum():
-            raise TickerValidationError(
-                f"Ticker symbol contains invalid characters: {s!r}"
-            )
+            raise TickerValidationError(f"Ticker symbol contains invalid characters: {s!r}")
         self._symbol = s
         self._exchange = exchange
 

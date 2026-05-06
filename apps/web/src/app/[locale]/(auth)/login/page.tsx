@@ -1,0 +1,121 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter, Link } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuth } from "@/lib/auth/useAuth";
+import { ApiClientError } from "@/lib/api/client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+function loginSchema(t: ReturnType<typeof useTranslations<"auth">>) {
+  return z.object({
+    email: z
+      .string()
+      .min(1, t("emailRequired"))
+      .email(t("emailInvalid")),
+    password: z
+      .string()
+      .min(1, t("passwordRequired"))
+      .min(8, t("passwordMinLength")),
+  });
+}
+
+type LoginFormValues = z.infer<ReturnType<typeof loginSchema>>;
+
+export default function LoginPage() {
+  const t = useTranslations("auth");
+  const tc = useTranslations("common");
+  const router = useRouter();
+  const { login } = useAuth();
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema(t)),
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
+    setServerError(null);
+    try {
+      await login({ email: data.email, password: data.password });
+      router.push("/dashboard");
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        setServerError(err.detail);
+      } else {
+        setServerError(t("loginError"));
+      }
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("loginTitle")}</CardTitle>
+        <CardDescription>
+          {t("noAccount")}{" "}
+          <Link href="/register" className="text-primary underline underline-offset-4">
+            {tc("register")}
+          </Link>
+        </CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <CardContent className="space-y-4">
+          {serverError && (
+            <div className="rounded-md bg-destructive/15 px-4 py-2 text-sm text-destructive">
+              {serverError}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="email">{t("email")}</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">{t("password")}</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              {...register("password")}
+            />
+            {errors.password && (
+              <p className="text-sm text-destructive">{errors.password.message}</p>
+            )}
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "…" : tc("login")}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  );
+}

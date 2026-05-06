@@ -13,6 +13,11 @@ from .file_tools import (
     file_read,
     file_write,
 )
+from .gh_ci_tools import (
+    gh_pr_failed_logs,
+    gh_pr_status,
+    gh_wait_for_ci,
+)
 from .git_tools import (
     gh_pr_create,
     gh_pr_merge,  # conservé pour usage humain uniquement (UI Streamlit / REPL)
@@ -22,11 +27,6 @@ from .git_tools import (
     git_pull,
     git_push,
     git_status,
-)
-from .gh_ci_tools import (
-    gh_pr_failed_logs,
-    gh_pr_status,
-    gh_wait_for_ci,
 )
 from .gitnexus_tools import (
     gitnexus_context,

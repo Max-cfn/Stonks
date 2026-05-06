@@ -36,6 +36,10 @@
       "tree-sitter-rust",
       "tree-sitter-swift",
       "tree-sitter-typescript"
-    ]
+    ],
+    "overrides": {
+      "@types/react": "~19.1.0",
+      "@types/react-dom": "~19.1.0"
+    }
   }
 }

@@ -19,7 +19,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.create_table(
         "cashflow_balance_snapshots",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column(
             "account_id",
             postgresql.UUID(as_uuid=True),
@@ -37,6 +37,8 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
+        # TimescaleDB requires partition column in PK
+        sa.PrimaryKeyConstraint("id", "timestamp"),
     )
     # Hypertable on timestamp
     op.execute(

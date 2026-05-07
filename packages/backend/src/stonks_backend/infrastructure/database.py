@@ -48,10 +48,11 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency: yields an AsyncSession."""
+    """FastAPI dependency: yields an AsyncSession, commits on success."""
     factory = get_session_factory()
     async with factory() as session:
         yield session
+        await session.commit()
 
 
 engine = get_engine()  # Eager init — import-time side effect

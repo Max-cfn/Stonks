@@ -20,11 +20,14 @@ def upgrade() -> None:
     # Create the table first
     op.create_table(
         "audit_log",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("ts", sa.DateTime(timezone=True), nullable=False),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True, index=True),
         sa.Column("action", sa.String(128), nullable=False),
         sa.Column("payload", postgresql.JSONB(), nullable=True),
+        # Composite PK: TimescaleDB requires the partition column (ts)
+        # to be part of any unique index, including the primary key.
+        sa.PrimaryKeyConstraint("id", "ts"),
     )
     # Convert to TimescaleDB hypertable
     op.execute("SELECT create_hypertable('audit_log', 'ts', if_not_exists => TRUE)")

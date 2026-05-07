@@ -318,12 +318,6 @@ async def get_summary(
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> CashflowSummaryResponse:
     """Get cashflow summary for the current period (month or year)."""
-    if current_user is None:
-        return CashflowSummaryResponse(
-            period_label="", period_type=period,
-            total_income="0", total_expenses="0", net_flow="0",
-            account_count=0, categories=[]
-        )
     use_case = GetCashflowSummary(repo)
     summary = await use_case.compute(current_user.id, period=period)
 

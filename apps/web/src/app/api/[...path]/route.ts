@@ -4,11 +4,12 @@ const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4174";
 
 /**
- * Proxy all /api/auth/* requests to the backend, preserving cookies.
+ * Generic API proxy: forwards all /api/* requests to the backend.
  */
 async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
-  const backendPath = `/auth/${path.join("/")}`;
-  const backendUrl = `${BACKEND_URL}${backendPath}`;
+  const backendPath = `/${path.join("/")}`;
+  const url = new URL(req.url);
+  const backendUrl = `${BACKEND_URL}${backendPath}${url.search}`;
 
   // Build headers to forward
   const forwardHeaders = new Headers();
@@ -42,11 +43,6 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
     });
 
     // Build response, forwarding Set-Cookie and other headers
-    const responseInit: ResponseInit = {
-      status: res.status,
-      statusText: res.statusText,
-    };
-
     const responseHeaders = new Headers();
 
     res.headers.forEach((value, key) => {
@@ -58,55 +54,61 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
         lower === "cache-control" ||
         lower.startsWith("x-")
       ) {
-        // append() not set() — multiple Set-Cookie headers
         responseHeaders.append(key, value);
       }
     });
 
-    responseInit.headers = responseHeaders;
-
     const responseBody = res.status === 204 ? null : await res.text();
-    return new NextResponse(responseBody, responseInit);
+    return new NextResponse(responseBody, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: responseHeaders,
+    });
   } catch (error) {
-    console.error("[auth-proxy] Backend unreachable:", error);
+    console.error("[api-proxy] Backend unreachable:", error);
     return NextResponse.json(
       { detail: "Backend unreachable" },
-      { status: 502 },
+      { status: 502 }
     );
   }
 }
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, (await params).path);
+  const { path } = await params;
+  return proxy(req, path);
 }
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, (await params).path);
+  const { path } = await params;
+  return proxy(req, path);
 }
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, (await params).path);
+  const { path } = await params;
+  return proxy(req, path);
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, (await params).path);
+  const { path } = await params;
+  return proxy(req, path);
 }
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(req, (await params).path);
+  const { path } = await params;
+  return proxy(req, path);
 }

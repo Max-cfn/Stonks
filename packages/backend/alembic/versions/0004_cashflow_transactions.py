@@ -21,7 +21,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.create_table(
         "cashflow_transactions",
-        sa.Column("id", sa.String(64), primary_key=True),
+        sa.Column("id", sa.String(64), nullable=False),
         sa.Column(
             "account_id",
             postgresql.UUID(as_uuid=True),
@@ -47,6 +47,8 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         # Deduplication: one bank_tx_id per account (where bank_tx_id is not null)
         sa.UniqueConstraint("account_id", "bank_tx_id", name="uq_account_bank_tx"),
+        # TimescaleDB: partition column must be in PK
+        sa.PrimaryKeyConstraint("id", "created_at"),
     )
     # Convert to TimescaleDB hypertable on created_at
     op.execute(

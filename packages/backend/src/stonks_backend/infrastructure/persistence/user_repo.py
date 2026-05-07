@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from stonks_backend.application.ports.repositories import UserRepositoryPort
-from stonks_backend.domain.user import Email, User
+from stonks_backend.domain.user import Email, HashedPassword, User
 from stonks_backend.infrastructure.persistence.models import UserModel
 
 logger = structlog.get_logger(__name__)
@@ -59,7 +59,7 @@ class UserRepository(UserRepositoryPort):
         return User(
             id=model.id,
             email=Email(model.email),
-            hashed_password=model.hashed_password,  # type: ignore[arg-type]
+            hashed_password=HashedPassword(model.hashed_password),
             created_at=model.created_at,
             updated_at=model.updated_at,
             is_active=model.is_active,

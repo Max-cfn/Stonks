@@ -171,8 +171,6 @@ async def list_accounts(
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> AccountListResponse:
     """List all cashflow accounts for the authenticated user."""
-    if current_user is None:
-        return AccountListResponse(accounts=[])
     accounts = await repo.get_accounts_by_user(current_user.id)
     return AccountListResponse(
         accounts=[

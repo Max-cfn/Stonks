@@ -1,4 +1,3 @@
-STDOUT:
 """0005_cashflow_categories — create cashflow_categories table + categorization_rules.
 
 Revision ID: 0005_cashflow_categories
@@ -34,7 +33,7 @@ def upgrade() -> None:
         ),
         sa.Column("name", sa.String(128), nullable=False),
         sa.Column("group_name", sa.String(64), nullable=False, server_default="other"),
-        sa.Column("icon", sa.String(8), nullable=False, server_default="📦"),
+        sa.Column("icon", sa.String(8), nullable=False, server_default="\U0001f4e6"),
         sa.Column("color_hex", sa.String(7), nullable=False, server_default="#808080"),
         sa.Column("parent_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("is_system", sa.Boolean(), nullable=False, server_default=sa.text("false")),
@@ -71,7 +70,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("category_id", "pattern", name="uq_category_pattern"),
     )
 
-    # 3. Add FK from cashflow_transactions.category_id → cashflow_categories.id
+    # 3. Add FK from cashflow_transactions.category_id -> cashflow_categories.id
     op.create_foreign_key(
         "fk_transactions_category",
         "cashflow_transactions",
@@ -96,37 +95,37 @@ def _seed_default_categories(op) -> None:
     from sqlalchemy.sql import text
 
     categories = [
-        ("INCOME", "Salaire", "💰", "#2E7D32"),
-        ("INCOME", "Freelance", "💻", "#2E7D32"),
-        ("INCOME", "Aides", "🤝", "#2E7D32"),
-        ("INCOME", "Remboursements", "↩️", "#2E7D32"),
-        ("HOUSING", "Loyer", "🏠", "#E65100"),
-        ("HOUSING", "Électricité", "⚡", "#E65100"),
-        ("HOUSING", "Eau", "💧", "#E65100"),
-        ("HOUSING", "Internet", "🌐", "#E65100"),
-        ("HOUSING", "Assurance habitation", "🛡️", "#E65100"),
-        ("FOOD", "Courses", "🛒", "#4CAF50"),
-        ("FOOD", "Restaurant", "🍽️", "#4CAF50"),
-        ("FOOD", "Café", "☕", "#4CAF50"),
-        ("FOOD", "Livraison", "🛵", "#4CAF50"),
-        ("TRANSPORT", "Essence", "⛽", "#1976D2"),
-        ("TRANSPORT", "Transports en commun", "🚇", "#1976D2"),
-        ("TRANSPORT", "Péage", "🛣️", "#1976D2"),
-        ("TRANSPORT", "Parking", "🅿️", "#1976D2"),
-        ("HEALTH", "Pharmacie", "💊", "#D32F2F"),
-        ("HEALTH", "Médecin", "🩺", "#D32F2F"),
-        ("HEALTH", "Mutuelle", "🏥", "#D32F2F"),
-        ("SHOPPING", "Vêtements", "👕", "#9C27B0"),
-        ("SHOPPING", "Électronique", "📱", "#9C27B0"),
-        ("SHOPPING", "Maison", "🪴", "#9C27B0"),
-        ("ENTERTAINMENT", "Abonnements", "📺", "#FF5722"),
-        ("ENTERTAINMENT", "Loisirs", "🎮", "#FF5722"),
-        ("ENTERTAINMENT", "Voyages", "✈️", "#FF5722"),
-        ("ENTERTAINMENT", "Sport", "🏋️", "#FF5722"),
-        ("FINANCIAL", "Frais bancaires", "🏦", "#607D8B"),
-        ("FINANCIAL", "Impôts", "📝", "#607D8B"),
-        ("FINANCIAL", "Crédit", "💳", "#607D8B"),
-        ("OTHER", "Divers", "📦", "#808080"),
+        ("INCOME", "Salaire", "\U0001f4b0", "#2E7D32"),
+        ("INCOME", "Freelance", "\U0001f4bb", "#2E7D32"),
+        ("INCOME", "Aides", "\U0001f91d", "#2E7D32"),
+        ("INCOME", "Remboursements", "\u21a9\ufe0f", "#2E7D32"),
+        ("HOUSING", "Loyer", "\U0001f3e0", "#E65100"),
+        ("HOUSING", "Electricite", "\u26a1", "#E65100"),
+        ("HOUSING", "Eau", "\U0001f4a7", "#E65100"),
+        ("HOUSING", "Internet", "\U0001f310", "#E65100"),
+        ("HOUSING", "Assurance habitation", "\U0001f6e1\ufe0f", "#E65100"),
+        ("FOOD", "Courses", "\U0001f6d2", "#4CAF50"),
+        ("FOOD", "Restaurant", "\U0001f37d\ufe0f", "#4CAF50"),
+        ("FOOD", "Cafe", "\u2615", "#4CAF50"),
+        ("FOOD", "Livraison", "\U0001f6f5", "#4CAF50"),
+        ("TRANSPORT", "Essence", "\u26fd", "#1976D2"),
+        ("TRANSPORT", "Transports en commun", "\U0001f687", "#1976D2"),
+        ("TRANSPORT", "Peage", "\U0001f6e3\ufe0f", "#1976D2"),
+        ("TRANSPORT", "Parking", "\U0001f17f\ufe0f", "#1976D2"),
+        ("HEALTH", "Pharmacie", "\U0001f48a", "#D32F2F"),
+        ("HEALTH", "Medecin", "\U0001fa7a", "#D32F2F"),
+        ("HEALTH", "Mutuelle", "\U0001f3e5", "#D32F2F"),
+        ("SHOPPING", "Vetements", "\U0001f455", "#9C27B0"),
+        ("SHOPPING", "Electronique", "\U0001f4f1", "#9C27B0"),
+        ("SHOPPING", "Maison", "\U0001fab4", "#9C27B0"),
+        ("ENTERTAINMENT", "Abonnements", "\U0001f4fa", "#FF5722"),
+        ("ENTERTAINMENT", "Loisirs", "\U0001f3ae", "#FF5722"),
+        ("ENTERTAINMENT", "Voyages", "\u2708\ufe0f", "#FF5722"),
+        ("ENTERTAINMENT", "Sport", "\U0001f3cb\ufe0f", "#FF5722"),
+        ("FINANCIAL", "Frais bancaires", "\U0001f3e6", "#607D8B"),
+        ("FINANCIAL", "Imports", "\U0001f4dd", "#607D8B"),
+        ("FINANCIAL", "Credit", "\U0001f4b3", "#607D8B"),
+        ("OTHER", "Divers", "\U0001f4e6", "#808080"),
     ]
 
     stmt = text(
@@ -139,7 +138,3 @@ def _seed_default_categories(op) -> None:
         op.execute(stmt.bindparams(
             id=uuid.uuid4(), name=name, group_name=group.lower(), icon=icon, color_hex=color
         ))
-
-STDERR:
-
-CODE: 0

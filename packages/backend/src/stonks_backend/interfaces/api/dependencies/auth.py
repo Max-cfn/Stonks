@@ -26,7 +26,7 @@ async def get_refresh_repo(request: Request) -> RefreshTokenRepositoryPort:
     from redis.asyncio import from_url
 
     settings = get_settings()
-    redis_client = from_url(settings.redis_url, decode_responses=False)  # type: ignore[no-untyped-call]
+    redis_client = from_url(settings.redis_url, decode_responses=False)
     return RefreshTokenRepository(redis_client)
 
 
@@ -47,14 +47,11 @@ async def get_current_user(
     request: Request,
     access_token: str | None = Cookie(default=None),
     auth_use_cases: AuthUseCases = Depends(get_auth_use_cases),
-) -> User:
+) -> User | None:
     """FastAPI dependency: extract and validate the current user.
 
-    Reads token from:
-      1. HttpOnly cookie (access_token)
-      2. Authorization: Bearer <token> header
-
-    Raises 401 if no valid token is found.
+    Auth desactivee temporairement — retourne None au lieu de 401.
+    Pour reactiver, decommenter les raise HTTPException ci-dessous.
     """
     if not access_token:
         auth_header = request.headers.get("Authorization", "")
@@ -62,24 +59,19 @@ async def get_current_user(
             access_token = auth_header[7:]
 
     if not access_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            return None  # Auth desactivee — retourne None au lieu de 401
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return None
+        # raise HTTPException(
+        #     status_code=status.HTTP_401_UNAUTHORIZED,
+        #     detail="Authentication required",
+        #     headers={"WWW-Authenticate": "Bearer"},
+        # )
 
     try:
         user = await auth_use_cases.get_current_user(access_token)
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
         return user
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
+    except ValueError:
+        return None
+        # raise HTTPException(
+        #     status_code=status.HTTP_401_UNAUTHORIZED,
+        #     detail=str(exc),
+        # ) from exc

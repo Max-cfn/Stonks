@@ -96,8 +96,6 @@ async def connect_bank(
     settings = get_settings()
     redirect_uri = f"{settings.public_url}/cashflow/banks/callback"
 
-    if current_user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
     use_case = ConnectBankAccount(bank_connector, None)  # repo not needed yet
     auth_url = await use_case.get_authorization_url(
         user_id=current_user.id, redirect_uri=redirect_uri
@@ -133,7 +131,7 @@ async def bank_callback(
             redirect_uri=redirect_uri,
         )
     except Exception as exc:
-        logger.error("Bank connection failed for user %s: %s", current_user.id if current_user else 'anonymous', exc)
+        logger.error("Bank connection failed for user %s: %s", current_user.id, exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Bank connection failed: {exc}",

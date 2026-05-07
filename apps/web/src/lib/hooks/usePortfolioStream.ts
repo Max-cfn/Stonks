@@ -10,7 +10,7 @@ export interface UsePortfolioStreamReturn {
   reconnect: () => void;
 }
 
-const WS_URL = "ws://localhost:4174/portfolio/stream";
+const WS_URL = `ws://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:4174/portfolio/stream`;
 const MAX_BACKOFF_MS = 30_000;
 const INITIAL_BACKOFF_MS = 1_000;
 

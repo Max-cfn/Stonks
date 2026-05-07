@@ -46,7 +46,7 @@ def upgrade() -> None:
         sa.Column("category_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         # Deduplication: one bank_tx_id per account (where bank_tx_id is not null)
-        sa.UniqueConstraint("account_id", "bank_tx_id", name="uq_account_bank_tx"),
+        sa.UniqueConstraint("account_id", "bank_tx_id", "created_at", name="uq_account_bank_tx"),
         # TimescaleDB: partition column must be in PK
         sa.PrimaryKeyConstraint("id", "created_at"),
     )

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Briefcase, TrendingUp } from "lucide-react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConnectionIndicator } from "@/components/layout/ConnectionIndicator";
 
 // Mock columns for placeholder table
 const PLACEHOLDER_COLUMNS = ["ticker", "name", "shares", "price", "value", "gain"] as const;
@@ -76,7 +77,10 @@ export function PortfolioView() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <ConnectionIndicator />
+      </div>
 
       <EmptyState
         icon={<Briefcase className="h-8 w-8" />}

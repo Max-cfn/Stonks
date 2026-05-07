@@ -5,16 +5,8 @@ import { AuthContext, type AuthContextValue } from "./AuthContext";
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  // Auth desactivee — retourne un contexte guest par defaut
   if (!ctx) {
-    return {
-      user: null,
-      isLoading: false,
-      login: async () => {},
-      register: async () => {},
-      logout: async () => {},
-      isAuthenticated: false,
-    };
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return ctx;
 }

@@ -47,21 +47,27 @@ async def get_current_user(
     request: Request,
     access_token: str | None = Cookie(default=None),
     auth_use_cases: AuthUseCases = Depends(get_auth_use_cases),
-) -> User | None:
-    """FastAPI dependency: extract and validate the current user.
+) -> User:
+    """FastAPI dependency: extract and validate the current user from cookies.
 
-    Auth desactivee temporairement — retourne None au lieu de 401.
-    Pour reactiver, retablir les HTTPException ci-dessous.
+    Returns 401 Unauthorized if the token is missing or invalid.
     """
     if not access_token:
+        # Allow Bearer token in Authorization header as fallback
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             access_token = auth_header[7:]
     if not access_token:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
 
     try:
         user = await auth_use_cases.get_current_user(access_token)
         return user
-    except ValueError:
-        return None
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        ) from exc

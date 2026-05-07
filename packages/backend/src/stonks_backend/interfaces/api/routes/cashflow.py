@@ -89,7 +89,7 @@ async def get_bank_connector(
 )
 async def connect_bank(
     request: Request,
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
 ) -> ConnectResponse:
     """Initiate OAuth flow: returns the URL the user must visit to authorize."""
@@ -115,7 +115,7 @@ async def connect_bank(
 async def bank_callback(
     code: str = Query(..., description="OAuth authorization code"),
     state: str = Query(None, description="OAuth state parameter"),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> AccountListResponse:
@@ -165,7 +165,7 @@ async def bank_callback(
     responses={401: {"model": ErrorResponse}},
 )
 async def list_accounts(
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> AccountListResponse:
     """List all cashflow accounts for the authenticated user."""
@@ -205,7 +205,7 @@ async def list_accounts(
 async def sync_transactions(
     request: Request,
     account_id: UUID,
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> SyncResponse:
@@ -250,7 +250,7 @@ async def list_transactions(
     until: str | None = Query(None, description="End date ISO 8601"),
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> TransactionListResponse:
     """List paginated transactions for an account, with optional date filtering."""
@@ -310,7 +310,7 @@ async def list_transactions(
 )
 async def get_summary(
     period: str = Query("month", pattern="^(month|year)$"),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> CashflowSummaryResponse:
     """Get cashflow summary for the current period (month or year)."""

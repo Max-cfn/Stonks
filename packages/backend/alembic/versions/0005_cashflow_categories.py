@@ -1,3 +1,4 @@
+STDOUT:
 """0005_cashflow_categories — create cashflow_categories table + categorization_rules.
 
 Revision ID: 0005_cashflow_categories
@@ -136,5 +137,9 @@ def _seed_default_categories(op) -> None:
 
     for group, name, icon, color in categories:
         op.execute(stmt.bindparams(
-            id=str(uuid.uuid4()), name=name, group_name=group.lower(), icon=icon, color_hex=color
+            id=uuid.uuid4(), name=name, group_name=group.lower(), icon=icon, color_hex=color
         ))
+
+STDERR:
+
+CODE: 0

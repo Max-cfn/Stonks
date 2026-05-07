@@ -109,7 +109,7 @@ tasks:
   backend:dev:
     desc: "Lance le backend FastAPI en mode dev (reload auto)"
     cmds:
-      - "{{.BACKEND_VENV}}/bin/uvicorn stonks_backend.app:create_app --factory --reload --host 0.0.0.0 --port 8000"
+      - "{{.BACKEND_VENV}}/bin/uvicorn stonks_backend.app:create_app --factory --reload --host 0.0.0.0 --port 4174"
 
   backend:test:
     desc: "Lance les tests backend avec couverture"

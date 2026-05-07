@@ -107,8 +107,15 @@ export async function apiClient<T = unknown>(
       });
     } else {
       if (typeof window !== "undefined") {
-        const locale = window.location.pathname.split("/")[1] || "fr";
-        window.location.href = `/${locale}/login`;
+        // Eviter la boucle de redirection : ne pas redirect vers /login
+        // si on est DEJA sur login ou register.
+        const pathname = window.location.pathname;
+        const isAuthPage =
+          pathname.includes("/login") || pathname.includes("/register");
+        if (!isAuthPage) {
+          const locale = pathname.split("/")[1] || "fr";
+          window.location.href = `/${locale}/login`;
+        }
       }
       throw new ApiClientError(401, "Session expired");
     }

@@ -101,13 +101,29 @@ async def login(
     responses={401: {"model": ErrorResponse}},
 )
 async def refresh(
-    body: RefreshRequest,
+    request: Request,
     response: Response,
+    body: RefreshRequest | None = None,
     auth_use_cases: AuthUseCases = Depends(get_auth_use_cases),
 ) -> TokenResponse:
-    """Rotate refresh token and return a new token pair."""
+    """Rotate refresh token and return a new token pair.
+
+    Accepte le refresh_token depuis le body JSON OU le cookie HttpOnly.
+    """
+    # Lire depuis le cookie d'abord (le frontend envoie credentials:include)
+    refresh_token = request.cookies.get("refresh_token")
+    # Sinon depuis le body
+    if not refresh_token and body and body.refresh_token:
+        refresh_token = body.refresh_token
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token missing (provide in body or cookie)",
+        )
+
     try:
-        tokens = await auth_use_cases.refresh(refresh_token=body.refresh_token)
+        tokens = await auth_use_cases.refresh(refresh_token=refresh_token)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 

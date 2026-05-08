@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-theme="dark"] *));
 
 @theme inline {
   --color-background: var(--background);
@@ -67,7 +67,7 @@
   --chart-5: hsl(340 75% 55%);
 }
 
-.dark {
+[data-theme="dark"] {
   --background: hsl(222 47% 11%);
   --foreground: hsl(210 20% 98%);
   --card: hsl(222 47% 13%);

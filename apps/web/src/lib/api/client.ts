@@ -95,9 +95,30 @@ export async function apiClient<T = unknown>(
 
   // ── 401 → attempt refresh & retry once ──
   if (res.status === 401 && !skipAuth) {
-    // Auth desactivee — on laisse passer les 401 sans redirect
-    clearTokens();
-    throw new ApiClientError(401, "Not authenticated");
+    const newTokens = await refreshTokens();
+
+    if (newTokens) {
+      headers["Authorization"] = `Bearer ${newTokens.access_token}`;
+      res = await fetch(path, {
+        ...rest,
+        credentials: "include",
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } else {
+      if (typeof window !== "undefined") {
+        // Eviter la boucle de redirection : ne pas redirect vers /login
+        // si on est DEJA sur login ou register.
+        const pathname = window.location.pathname;
+        const isAuthPage =
+          pathname.includes("/login") || pathname.includes("/register");
+        if (!isAuthPage) {
+          const locale = pathname.split("/")[1] || "fr";
+          window.location.href = `/${locale}/login`;
+        }
+      }
+      throw new ApiClientError(401, "Session expired");
+    }
   }
 
   if (!res.ok) {

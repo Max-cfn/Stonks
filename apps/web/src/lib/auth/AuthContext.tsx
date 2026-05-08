@@ -3,43 +3,128 @@
 import React, {
   createContext,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import type { UserResponse, LoginRequest, RegisterRequest } from "@stonks/shared-types";
+import {
+  apiGetMe,
+  apiLogin,
+  apiLogout,
+  apiRegister,
+  clearTokens,
+} from "@/lib/api/client";
 import { useRouter } from "@/i18n/routing";
 
-// Auth desactivee temporairement — l'app fonctionne en mode guest.
-// Pour reactiver, retablir les appels apiGetMe/apiLogin/apiLogout.
-
+// ── Types ──
 export interface AuthContextValue {
-  user: null;
-  isLoading: false;
-  login: () => Promise<void>;
-  register: () => Promise<void>;
+  user: UserResponse | null;
+  isLoading: boolean;
+  login: (credentials: LoginRequest) => Promise<void>;
+  register: (credentials: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
-  isAuthenticated: false;
+  isAuthenticated: boolean;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
+// ── Provider ──
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = React.useState<UserResponse | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const mountedRef = useRef(false);
 
-  const login = useCallback(async () => {}, []);
-  const register = useCallback(async () => {}, []);
+  // Fetch current user on mount
+  useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+
+    let cancelled = false;
+
+    async function fetchUser() {
+      try {
+        const me = await apiGetMe();
+        if (!cancelled) {
+          setUser(me);
+        }
+      } catch {
+        // No active session — that's okay
+        if (!cancelled) {
+          setUser(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const login = useCallback(
+    async (credentials: LoginRequest) => {
+      setIsLoading(true);
+      try {
+        await apiLogin(credentials);
+        const me = await apiGetMe();
+        setUser(me);
+        queryClient.invalidateQueries({ queryKey: ["me"] });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [queryClient],
+  );
+
+  const register = useCallback(
+    async (credentials: RegisterRequest) => {
+      setIsLoading(true);
+      try {
+        await apiRegister(credentials);
+        // Auto-login after register
+        const tokens = await apiLogin({
+          email: credentials.email,
+          password: credentials.password,
+        });
+        if (tokens) {
+          const me = await apiGetMe();
+          setUser(me);
+          queryClient.invalidateQueries({ queryKey: ["me"] });
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [queryClient],
+  );
+
   const logout = useCallback(async () => {
+    await apiLogout();
+    setUser(null);
+    clearTokens();
+    queryClient.clear();
     router.push("/login");
-  }, [router]);
+  }, [router, queryClient]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      user: null,
-      isLoading: false as const,
+      user,
+      isLoading,
       login,
       register,
       logout,
-      isAuthenticated: false as const,
+      isAuthenticated: user !== null,
     }),
-    [login, register, logout],
+    [user, isLoading, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

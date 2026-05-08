@@ -634,16 +634,11 @@ async def portfolio_stream(
     from stonks_backend.infrastructure.security.jwt_service import JWTService
 
     settings = get_settings()
-    jwt_service = JWTService(
-        secret=settings.jwt_secret.get_secret_value(),
-        algorithm=settings.jwt_algorithm,
-        access_token_expire_minutes=settings.jwt_access_token_expire_minutes,
-        issuer=settings.jwt_issuer,
-    )
+    jwt_service = JWTService.from_settings(settings)
 
     # We need to verify the token. If it's an access token:
     try:
-        jwt_service.verify_access_token(token)
+        jwt_service.decode_access_token(token)
     except Exception:
         await websocket.close(code=4001, reason="Invalid or expired token")
         return

@@ -89,15 +89,13 @@ async def get_bank_connector(
 )
 async def connect_bank(
     request: Request,
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
 ) -> ConnectResponse:
     """Initiate OAuth flow: returns the URL the user must visit to authorize."""
     settings = get_settings()
     redirect_uri = f"{settings.public_url}/cashflow/banks/callback"
 
-    if current_user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
     use_case = ConnectBankAccount(bank_connector, None)  # repo not needed yet
     auth_url = await use_case.get_authorization_url(
         user_id=current_user.id, redirect_uri=redirect_uri
@@ -117,7 +115,7 @@ async def connect_bank(
 async def bank_callback(
     code: str = Query(..., description="OAuth authorization code"),
     state: str = Query(None, description="OAuth state parameter"),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> AccountListResponse:
@@ -133,7 +131,7 @@ async def bank_callback(
             redirect_uri=redirect_uri,
         )
     except Exception as exc:
-        logger.error("Bank connection failed for user %s: %s", current_user.id if current_user else 'anonymous', exc)
+        logger.error("Bank connection failed for user %s: %s", current_user.id, exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Bank connection failed: {exc}",
@@ -167,12 +165,10 @@ async def bank_callback(
     responses={401: {"model": ErrorResponse}},
 )
 async def list_accounts(
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> AccountListResponse:
     """List all cashflow accounts for the authenticated user."""
-    if current_user is None:
-        return AccountListResponse(accounts=[])
     accounts = await repo.get_accounts_by_user(current_user.id)
     return AccountListResponse(
         accounts=[
@@ -209,7 +205,7 @@ async def list_accounts(
 async def sync_transactions(
     request: Request,
     account_id: UUID,
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> SyncResponse:
@@ -254,7 +250,7 @@ async def list_transactions(
     until: str | None = Query(None, description="End date ISO 8601"),
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> TransactionListResponse:
     """List paginated transactions for an account, with optional date filtering."""
@@ -314,16 +310,10 @@ async def list_transactions(
 )
 async def get_summary(
     period: str = Query("month", pattern="^(month|year)$"),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> CashflowSummaryResponse:
     """Get cashflow summary for the current period (month or year)."""
-    if current_user is None:
-        return CashflowSummaryResponse(
-            period_label="", period_type=period,
-            total_income="0", total_expenses="0", net_flow="0",
-            account_count=0, categories=[]
-        )
     use_case = GetCashflowSummary(repo)
     summary = await use_case.compute(current_user.id, period=period)
 

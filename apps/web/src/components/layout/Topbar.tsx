@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "./UserMenu";
-import { ConnectionIndicator } from "./ConnectionIndicator";
 
 export function Topbar() {
   const t = useTranslations("common");
@@ -21,9 +20,6 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-2 border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* Connection indicator */}
-      <ConnectionIndicator />
-
       {/* Theme toggle */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

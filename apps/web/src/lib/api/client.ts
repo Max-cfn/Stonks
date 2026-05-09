@@ -153,8 +153,12 @@ export async function apiRegister(credentials: RegisterRequest): Promise<UserRes
 export async function apiLogout(): Promise<void> {
   try {
     await apiClient("/api/auth/logout", { method: "POST" });
-  } catch {
-    // Swallow — we clear tokens regardless
+    console.debug("[api] Logout successful");
+  } catch (err) {
+    // Log the error but clear tokens regardless — the server may have
+    // already cleared the cookies via Set-Cookie headers in the response
+    // even if the fetch threw (e.g. due to a redirect).
+    console.warn("[api] Logout request failed:", err);
   } finally {
     clearTokens();
   }

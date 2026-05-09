@@ -629,24 +629,32 @@ async def portfolio_stream(
      "timestamp": "2026-05-05T22:00:00Z", "source": "coingecko"}
     ```
     """
-    # Auth via query token — reuse JWT verification
-    from stonks_backend.infrastructure.config import get_settings
+    from stonks_backend.infrastructure.config import get_settings as ws_get_settings
     from stonks_backend.infrastructure.security.jwt_service import JWTService
 
-    settings = get_settings()
+    settings = ws_get_settings()
     jwt_service = JWTService.from_settings(settings)
 
-    # We need to verify the token. If it's an access token:
+    # ── Auth: verify JWT token ──
     try:
         jwt_service.decode_access_token(token)
     except Exception:
         await websocket.close(code=4001, reason="Invalid or expired token")
         return
 
-    await websocket.accept()
+    # ── Init price feed BEFORE accepting the WebSocket ──
+    # If get_price_feed() crashes (e.g. missing config, service down),
+    # we catch it and close cleanly instead of letting FastAPI try to
+    # send an HTTP 500 on a WebSocket connection.
+    try:
+        price_feed: PriceFeedPort = get_price_feed()
+    except Exception as exc:
+        logger.error("Failed to initialize price feed for WS stream: %s", exc)
+        await websocket.close(code=4000, reason="Price feed unavailable")
+        return
 
+    await websocket.accept()
     subscribed_tickers: set[str] = set()
-    price_feed: PriceFeedPort = get_price_feed()
 
     try:
         while True:

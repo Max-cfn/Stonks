@@ -176,16 +176,12 @@ class EnableBankingAdapter(BankConnectorPort):
                     "%Y-%m-%dT%H:%M:%SZ"
                 ),
             },
+            "aspsp": {"name": "Nordea", "country": "FI"},
             "state": state,
             "redirect_url": redirect_uri,
+            "psu_type": "personal",
             "language": "fr",
         }
-
-        # ASPSP (bank) selection — optional filter
-        aspsp: dict[str, str] = {"country": aspsp_country}
-        if aspsp_name:
-            aspsp["name"] = aspsp_name
-        body["aspsp"] = aspsp
 
         try:
             resp = await self._http.post(
@@ -222,32 +218,33 @@ class EnableBankingAdapter(BankConnectorPort):
 
         logger.info("Enable Banking 2026: auth URL generated for user %s", user_id)
         return auth_url
+    async def handle_session_callback(self, user_id: UUID, code: str) -> None:
+        """Handle the callback from Enable Banking after user auth.
 
-    async def handle_session_callback(self, user_id: UUID, session_id: str) -> None:
-        """Handle the session callback from Enable Banking.
-
-        GET /sessions/{session_id} → retrieve account IDs, store in Vault.
-        This replaces the old OAuth2 exchange_code_for_token flow.
+        Enable Banking redirects to our callback URL with ?code=XXX.
+        We exchange this code for a session via POST /sessions to get accounts.
 
         Args:
             user_id: The authenticated Stonks user.
-            session_id: The session_id query param from the redirect callback.
+            code: The code query param from the redirect callback.
         """
         jwt_token = self._generate_jwt()
 
         try:
-            resp = await self._http.get(
-                f"{ENABLE_BANKING_API}/sessions/{session_id}",
+            resp = await self._http.post(
+                f"{ENABLE_BANKING_API}/sessions",
+                json={"code": code},
                 headers={
                     "Authorization": f"Bearer {jwt_token}",
                     "Accept": "application/json",
+                    "Content-Type": "application/json",
                 },
             )
             resp.raise_for_status()
             data = resp.json()
         except httpx.HTTPStatusError as exc:
             raise EnableBankingError(
-                f"GET /sessions/{session_id} failed: {exc.response.status_code} {exc.response.text}"
+                f"POST /sessions failed: {exc.response.status_code} {exc.response.text}"
             ) from exc
 
         # Extract account IDs from session response
@@ -258,9 +255,11 @@ class EnableBankingAdapter(BankConnectorPort):
 
         if not account_ids:
             raise EnableBankingError(
-                f"Session {session_id} returned no account IDs. "
+                f"Session returned no account IDs. "
                 "Ensure the user completed the authentication flow."
             )
+
+        session_id = data.get("session_id", "")
 
         # Store session data + account IDs in Vault
         vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
@@ -269,7 +268,7 @@ class EnableBankingAdapter(BankConnectorPort):
             {
                 "session_id": session_id,
                 "account_ids": ",".join(account_ids),
-                "session_status": data.get("status", "unknown"),
+                "session_status": data.get("status", "authorized"),
             },
         )
 

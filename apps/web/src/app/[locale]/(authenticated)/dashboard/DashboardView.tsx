@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { Building2, TrendingUp, Wallet, Landmark } from "lucide-react";
 import { useDashboardData } from "@/lib/hooks/useCashflow";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";

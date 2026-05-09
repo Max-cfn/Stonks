@@ -113,18 +113,18 @@ async def connect_bank(
     },
 )
 async def bank_callback(
-    session_id: str = Query(..., description="Session ID from Enable Banking redirect"),
+    code: str = Query(..., description="Authorization code from Enable Banking redirect"),
     state: str = Query(None, description="OAuth state parameter"),
     current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> AccountListResponse:
-    """Session callback: resolve session_id, fetch and persist accounts."""
+    """Session callback: exchange code for session, fetch and persist accounts."""
     use_case = ConnectBankAccount(bank_connector, repo)
     try:
         accounts = await use_case.handle_callback(
             user_id=current_user.id,
-            session_id=session_id,
+            code=code,
         )
     except Exception as exc:
         logger.error("Bank connection failed for user %s: %s", current_user.id, exc)

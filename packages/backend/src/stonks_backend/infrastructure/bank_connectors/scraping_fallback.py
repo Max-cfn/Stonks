@@ -82,7 +82,7 @@ class ScrapingFallbackAdapter(BankConnectorPort):
         self._require_enabled()
         return f"{redirect_uri}?scraping=credentials_required"
 
-    async def handle_session_callback(self, user_id: UUID, session_id: str) -> None:
+    async def handle_session_callback(self, user_id: UUID, code: str) -> None:
         """Scraping doesn't use sessions — credential storage is manual."""
         self._require_enabled()
         logger.warning("handle_session_callback called on scraping adapter — no-op")

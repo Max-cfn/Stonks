@@ -48,18 +48,18 @@ class ConnectBankAccount:
         """
         return await self._connector.get_authorization_url(user_id, redirect_uri)
 
-    async def handle_callback(self, user_id: UUID, session_id: str) -> list[Account]:
-        """Handle the session callback: resolve session, fetch accounts, persist.
+    async def handle_callback(self, user_id: UUID, code: str) -> list[Account]:
+        """Exchange code for session, fetch accounts, and persist them.
 
         Args:
             user_id: The authenticated Stonks user.
-            session_id: The session_id query param from the bank redirect callback.
+            code: The authorization code from Enable Banking callback.
 
         Returns:
             List of Account domain objects fetched from the bank and persisted.
         """
-        # Step 1: Resolve session → account IDs (stored in Vault by the adapter)
-        await self._connector.handle_session_callback(user_id, session_id)
+        # Step 1: Exchange code for session (accounts stored in Vault by adapter)
+        await self._connector.handle_session_callback(user_id, code)
 
         # Step 2: Fetch accounts from the bank
         accounts = await self._connector.list_accounts(user_id)

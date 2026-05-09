@@ -29,8 +29,8 @@ class BankConnectorPort(ABC):
         ...
 
     @abstractmethod
-    async def handle_session_callback(self, user_id: UUID, session_id: str) -> None:
-        """Handle the session callback: resolve session_id → account IDs, store in Vault.
+    async def handle_session_callback(self, user_id: UUID, code: str) -> None:
+        """Exchange callback code for a session, store account IDs in Vault.
 
         Replaces the old OAuth2 exchange_code_for_token flow (Enable Banking 2026).
         """

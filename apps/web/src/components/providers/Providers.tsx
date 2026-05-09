@@ -13,6 +13,7 @@ export function Providers({ children }: { children: ReactNode }) {
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
+      enableColorScheme={false}
     >
       <QueryProvider>
         <AuthProvider>

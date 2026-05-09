@@ -18,11 +18,56 @@ function formatDate(iso: string): string {
   });
 }
 
+function SettingsSkeleton() {
+  return (
+    <div className="max-w-2xl space-y-6">
+      {/* Title placeholder */}
+      <div className="h-9 w-48 animate-pulse rounded bg-muted" />
+      {/* Profile card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <User className="h-5 w-5" />
+            <span className="h-5 w-16 animate-pulse rounded bg-muted" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-12 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+          </div>
+        </CardContent>
+      </Card>
+      {/* Banks card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Landmark className="h-5 w-5" />
+            <span className="h-5 w-40 animate-pulse rounded bg-muted" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LoadingSkeleton variant="card" className="h-24" />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function SettingsContent() {
   const t = useTranslations("settings");
   const c = useTranslations("common");
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const { data: accountsData, isLoading: loadingAccounts } = useAccounts();
+
+  // Wait for auth context to resolve before rendering user details
+  if (isLoading) {
+    return <SettingsSkeleton />;
+  }
 
   return (
     <div className="max-w-2xl space-y-6">

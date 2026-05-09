@@ -1,4 +1,4 @@
-"""Auth routes — /auth/register, /auth/login, /auth/refresh, /auth/me."""
+"""Auth routes — /auth/register, /auth/login, /auth/refresh, /auth/me, /auth/logout."""
 
 from __future__ import annotations
 
@@ -45,6 +45,24 @@ def _set_token_cookies(response: Response, tokens: TokenPair) -> None:
         secure=False,
         max_age=604800,  # 7 days
         path="/auth/refresh",
+    )
+
+
+def _delete_token_cookies(response: Response) -> None:
+    """Clear JWT token cookies to log the user out."""
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        httponly=True,
+        samesite="strict",
+        secure=False,
+    )
+    response.delete_cookie(
+        key="refresh_token",
+        path="/auth/refresh",
+        httponly=True,
+        samesite="strict",
+        secure=False,
     )
 
 
@@ -149,3 +167,21 @@ async def me(
         is_active=current_user.is_active,
         created_at=current_user.created_at.isoformat(),
     )
+
+
+@router.post(
+    "/logout",
+    responses={401: {"model": ErrorResponse}},
+)
+async def logout(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Clear authentication cookies to log the user out.
+
+    Requires authentication. The access and refresh token cookies
+    are deleted, which effectively terminates the session.
+    """
+    logger.info("User %s logging out", current_user.id)
+    _delete_token_cookies(response)
+    return {"status": "ok"}

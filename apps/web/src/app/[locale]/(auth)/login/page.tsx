@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 function loginSchema(t: ReturnType<typeof useTranslations<"auth">>) {
   return z.object({
@@ -48,6 +49,7 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema(t)),
+    mode: "onBlur", // validate on blur for instant feedback after first interaction
   });
 
   const onSubmit = async (data: LoginFormValues) => {
@@ -75,10 +77,10 @@ export default function LoginPage() {
           </Link>
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <CardContent className="space-y-4">
           {serverError && (
-            <div className="rounded-md bg-destructive/15 px-4 py-2 text-sm text-destructive">
+            <div className="rounded-md bg-destructive/15 px-4 py-2 text-sm text-destructive" role="alert">
               {serverError}
             </div>
           )}
@@ -90,10 +92,14 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
+              aria-invalid={errors.email ? "true" : "false"}
+              aria-describedby={errors.email ? "email-error" : undefined}
               {...register("email")}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p id="email-error" className="text-sm text-destructive" role="alert">
+                {errors.email.message}
+              </p>
             )}
           </div>
 
@@ -103,16 +109,27 @@ export default function LoginPage() {
               id="password"
               type="password"
               autoComplete="current-password"
+              aria-invalid={errors.password ? "true" : "false"}
+              aria-describedby={errors.password ? "password-error" : undefined}
               {...register("password")}
             />
             {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+              <p id="password-error" className="text-sm text-destructive" role="alert">
+                {errors.password.message}
+              </p>
             )}
           </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "…" : tc("login")}
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("login")}
+              </span>
+            ) : (
+              tc("login")
+            )}
           </Button>
         </CardFooter>
       </form>

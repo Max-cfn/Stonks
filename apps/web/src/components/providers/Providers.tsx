@@ -9,7 +9,7 @@ import { type ReactNode } from "react";
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <NextThemesProvider
-      attribute="class"
+      attribute="data-theme"
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange

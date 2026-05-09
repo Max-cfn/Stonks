@@ -255,7 +255,7 @@ class EnableBankingAdapter(BankConnectorPort):
 
         if not account_ids:
             raise EnableBankingError(
-                f"Session returned no account IDs. "
+                "Session returned no account IDs. "
                 "Ensure the user completed the authentication flow."
             )
 

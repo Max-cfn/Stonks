@@ -167,7 +167,8 @@ class EnableBankingAdapter(BankConnectorPort):
             URL the user must visit to authenticate with their bank.
         """
         jwt_token = self._generate_jwt()
-        state = secrets.token_urlsafe(32)
+        # Encode user_id in state so the callback can identify the user without auth
+        state = f"{user_id}:{secrets.token_urlsafe(16)}"
 
         # Build /auth request body
         body: dict[str, Any] = {

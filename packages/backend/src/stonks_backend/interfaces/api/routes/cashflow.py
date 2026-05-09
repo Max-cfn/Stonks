@@ -114,20 +114,35 @@ async def connect_bank(
 )
 async def bank_callback(
     code: str = Query(..., description="Authorization code from Enable Banking redirect"),
-    state: str = Query(None, description="OAuth state parameter"),
-    current_user: User = Depends(get_current_user),
+    state: str = Query(..., description="State parameter with encoded user_id"),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> AccountListResponse:
-    """Session callback: exchange code for session, fetch and persist accounts."""
+    """Session callback: exchange code for session, fetch and persist accounts.
+
+    No authentication required — the user_id is encoded in the state parameter
+    (format: "{user_id}:{random_token}") created during get_authorization_url().
+    """
+    # Decode user_id from state parameter
+    try:
+        from uuid import UUID
+
+        user_id_str = state.split(":")[0]
+        user_id = UUID(user_id_str)
+    except (ValueError, IndexError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid state parameter: {exc}",
+        ) from exc
+
     use_case = ConnectBankAccount(bank_connector, repo)
     try:
         accounts = await use_case.handle_callback(
-            user_id=current_user.id,
+            user_id=user_id,
             code=code,
         )
     except Exception as exc:
-        logger.error("Bank connection failed for user %s: %s", current_user.id, exc)
+        logger.error("Bank connection failed for user %s: %s", user_id, exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Bank connection failed: {exc}",

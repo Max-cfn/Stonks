@@ -49,7 +49,9 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema(t)),
-    mode: "onBlur", // validate on blur for instant feedback after first interaction
+    mode: "onSubmit", // validate all fields on submit, regardless of blur state
+    reValidateMode: "onChange", // re-validate on change after first submit
+    shouldFocusError: true, // focus the first field with an error
   });
 
   const onSubmit = async (data: LoginFormValues) => {

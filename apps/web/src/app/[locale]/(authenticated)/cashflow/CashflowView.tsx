@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
-import { Landmark, ArrowUpRight, ArrowDownRight, Filter } from "lucide-react";
+import { Landmark, ArrowUpRight, ArrowDownRight, Filter, Loader2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -13,7 +12,7 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts";
-import { useAccounts, useTransactions, useCashflowSummary } from "@/lib/hooks/useCashflow";
+import { useAccounts, useTransactions, useCashflowSummary, useConnectBank } from "@/lib/hooks/useCashflow";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -165,6 +164,36 @@ function SummaryChart({
   );
 }
 
+// ── ConnectBankButton ──
+function ConnectBankButton() {
+  const t = useTranslations("cashflow");
+  const connectBank = useConnectBank();
+
+  const handleConnect = () => {
+    connectBank.mutate(undefined, {
+      onSuccess: (data) => {
+        window.location.href = data.authorization_url;
+      },
+    });
+  };
+
+  return (
+    <Button
+      onClick={handleConnect}
+      disabled={connectBank.isPending}
+    >
+      {connectBank.isPending ? (
+        <span className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t("connectAccount")}
+        </span>
+      ) : (
+        t("connectAccount")
+      )}
+    </Button>
+  );
+}
+
 // ── CashflowContent ──
 function CashflowContent() {
   const t = useTranslations("cashflow");
@@ -207,11 +236,7 @@ function CashflowContent() {
           icon={<Landmark className="h-8 w-8" />}
           title={t("noAccounts")}
           description={t("noAccountsDesc")}
-          cta={
-            <Button asChild>
-              <Link href="/cashflow">{t("connectAccount")}</Link>
-            </Button>
-          }
+          cta={<ConnectBankButton />}
         />
       </div>
     );

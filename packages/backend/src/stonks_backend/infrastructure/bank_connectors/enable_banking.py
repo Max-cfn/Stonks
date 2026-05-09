@@ -218,6 +218,7 @@ class EnableBankingAdapter(BankConnectorPort):
 
         logger.info("Enable Banking 2026: auth URL generated for user %s", user_id)
         return auth_url
+
     async def handle_session_callback(self, user_id: UUID, code: str) -> None:
         """Handle the callback from Enable Banking after user auth.
 

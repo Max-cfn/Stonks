@@ -1,22 +1,24 @@
-"""EnableBankingAdapter — PSD2 bank connector via Enable Banking API.
+"""EnableBankingAdapter — PSD2 bank connector via Enable Banking API (2026 JWT).
 
-Implements BankConnectorPort using Enable Banking's OAuth2 PKCE flow.
-Uses Vault for token storage (never in DB). Auto-refreshes expired tokens.
+Implements BankConnectorPort using Enable Banking's 2026 API:
+- Auth: JWT RS256 signed with application private key (no OAuth2 PKCE)
+- Flow: POST /auth → redirect → session callback → accounts
+- Endpoint: api.enablebanking.com (single production endpoint)
 
-Enable Banking API docs: https://enablebanking.com/docs/
+Enable Banking 2026 API docs: https://enablebanking.com/docs/
 """
 
 from __future__ import annotations
 
-import base64
-import hashlib
 import logging
 import secrets
-from datetime import UTC, datetime
+import time
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 import httpx
+import jwt
 
 from stonks_backend.application.ports.cashflow import BankConnectorPort
 from stonks_backend.domain.cashflow.account import Account, AccountStatus, AccountType
@@ -33,12 +35,11 @@ from stonks_backend.infrastructure.security.vault_client import VaultClient
 
 logger = logging.getLogger(__name__)
 
-# Enable Banking API base URL
+# Enable Banking 2026 API — single endpoint
 ENABLE_BANKING_API = "https://api.enablebanking.com"
-ENABLE_BANKING_AUTH = "https://enablebanking.com/auth"
 
-# Required PSD2 scopes
-ENABLE_SCOPES = ["accounts", "balances", "transactions"]
+# JWT TTL: 24h (max allowed by Enable Banking)
+JWT_TTL_SECONDS = 86400
 
 
 class EnableBankingError(Exception):
@@ -46,16 +47,18 @@ class EnableBankingError(Exception):
 
 
 class EnableBankingTokenError(EnableBankingError):
-    """Raised when OAuth token exchange/refresh fails."""
+    """Raised when JWT generation or session retrieval fails."""
 
 
 class EnableBankingAdapter(BankConnectorPort):
-    """PSD2 bank connector using Enable Banking (OAuth2 PKCE).
+    """PSD2 bank connector using Enable Banking 2026 (JWT + sessions).
 
     Architecture:
-        - OAuth2 PKCE flow: code_verifier → code_challenge (SHA256)
-        - Tokens stored in Vault under stonks/bank/<user_id>
-        - Auto-refresh on 401
+        - Auth: JWT RS256 signed with application private key (PKCS#8 PEM)
+        - Sessions: POST /auth → redirect user → callback with ?session_id=
+        - Data: GET /sessions/{id} → account IDs → GET /accounts/{id}/*
+        - Credentials stored in Vault under stonks/bank/<user_id>
+        - No long-lived tokens stored at Enable Banking side
     """
 
     VAULT_PATH_PREFIX = "stonks/bank"
@@ -63,189 +66,283 @@ class EnableBankingAdapter(BankConnectorPort):
     def __init__(
         self,
         vault: VaultClient,
-        client_id: str,
-        client_secret: str | None = None,
-        sandbox: bool = True,
+        key_path: str,
+        application_id: str,
     ) -> None:
+        """Initialize the Enable Banking 2026 adapter.
+
+        Args:
+            vault: VaultClient for secure credential storage.
+            key_path: Path to the RSA private key (PKCS#8 PEM format).
+            application_id: Enable Banking Application ID (UUID v4).
+        """
         self._vault = vault
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._sandbox = sandbox
-        self._api_base = "https://api.sandbox.enablebanking.com" if sandbox else ENABLE_BANKING_API
-        self._auth_base = (
-            "https://auth.sandbox.enablebanking.com" if sandbox else ENABLE_BANKING_AUTH
-        )
+        self._key_path = key_path
+        self._application_id = application_id
         self._http = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
 
-    # ── OAuth2 PKCE Flow ───────────────────────────────────────────
+        # JWT cache — regenerate if expiring in < 5 minutes
+        self._jwt_cache: str | None = None
+        self._jwt_expires_at: float = 0.0
 
-    @staticmethod
-    def _generate_code_verifier() -> str:
-        """Generate a PKCE code_verifier (128 chars, unreserved)."""
-        token = secrets.token_bytes(96)
-        return base64.urlsafe_b64encode(token).decode("ascii").rstrip("=")
+    # ── JWT Generation ─────────────────────────────────────────────
 
-    @staticmethod
-    def _compute_code_challenge(verifier: str) -> str:
-        """Compute PKCE code_challenge = base64url(sha256(verifier))."""
-        digest = hashlib.sha256(verifier.encode("ascii")).digest()
-        return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+    def _load_private_key(self) -> str:
+        """Load the RSA private key from disk."""
+        import os
 
-    async def get_authorization_url(self, user_id: UUID, redirect_uri: str) -> str:
-        """Generate PKCE challenge and return the authorization URL."""
-        code_verifier = self._generate_code_verifier()
-        code_challenge = self._compute_code_challenge(code_verifier)
+        path = self._key_path
+        # Support relative paths relative to the package root
+        if not os.path.isabs(path):
+            # Try relative to /opt/stonks/packages/backend/
+            candidates = [
+                os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", path.lstrip("./")),
+                os.path.join("/opt/stonks", path.lstrip("./")),
+                path,
+            ]
+            for candidate in candidates:
+                if os.path.isfile(candidate):
+                    path = candidate
+                    break
+
+        with open(path) as f:
+            return f.read()
+
+    def _generate_jwt(self) -> str:
+        """Generate a JWT signed with the application private key (RS256).
+
+        Format:
+            Header: {"typ":"JWT","alg":"RS256","kid":"<application_id>"}
+            Body:   {"iss":"enablebanking.com","aud":"api.enablebanking.com",
+                     "iat":<ts>,"exp":<ts+86400>}
+
+        Cached for the JWT lifetime (24h) — regenerated if expiring in < 5 min.
+        """
+        now = time.time()
+        if self._jwt_cache and now < self._jwt_expires_at - 300:
+            return self._jwt_cache
+
+        private_key = self._load_private_key()
+        iat = int(now)
+        exp = iat + JWT_TTL_SECONDS
+
+        payload = {
+            "iss": "enablebanking.com",
+            "aud": "api.enablebanking.com",
+            "iat": iat,
+            "exp": exp,
+        }
+        headers = {
+            "typ": "JWT",
+            "alg": "RS256",
+            "kid": self._application_id,
+        }
+
+        token = jwt.encode(payload, private_key, algorithm="RS256", headers=headers)
+        self._jwt_cache = token
+        self._jwt_expires_at = exp
+        return token
+
+    # ── OAuth 2026 Session Flow ────────────────────────────────────
+
+    async def get_authorization_url(
+        self,
+        user_id: UUID,
+        redirect_uri: str,
+        aspsp_name: str | None = None,
+        aspsp_country: str = "FR",
+    ) -> str:
+        """Initiate the Enable Banking 2026 session flow.
+
+        POST /auth with JWT → returns {url, authorization_id}.
+        Stores authorization_id in Vault for callback verification.
+
+        Args:
+            user_id: The authenticated Stonks user.
+            redirect_uri: URL where Enable Banking redirects the user after auth.
+            aspsp_name: Optional bank name filter (e.g. "Boursorama").
+            aspsp_country: Two-letter country code (default "FR").
+
+        Returns:
+            URL the user must visit to authenticate with their bank.
+        """
+        jwt_token = self._generate_jwt()
         state = secrets.token_urlsafe(32)
 
-        # Store code_verifier and state in Vault
+        # Build /auth request body
+        body: dict[str, Any] = {
+            "access": {
+                "valid_until": (datetime.now(UTC) + timedelta(days=90)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+            },
+            "state": state,
+            "redirect_url": redirect_uri,
+            "language": "fr",
+        }
+
+        # ASPSP (bank) selection — optional filter
+        aspsp: dict[str, str] = {"country": aspsp_country}
+        if aspsp_name:
+            aspsp["name"] = aspsp_name
+        body["aspsp"] = aspsp
+
+        try:
+            resp = await self._http.post(
+                f"{ENABLE_BANKING_API}/auth",
+                json=body,
+                headers={
+                    "Authorization": f"Bearer {jwt_token}",
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+            )
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+        except httpx.HTTPStatusError as exc:
+            raise EnableBankingError(
+                f"POST /auth failed: {exc.response.status_code} {exc.response.text}"
+            ) from exc
+
+        auth_url = str(data["url"])
+        authorization_id = data.get("authorization_id")
+        if not auth_url:
+            raise EnableBankingError("POST /auth response missing 'url' field")
+
+        # Store authorization_id + state in Vault
         vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
         await self._vault.write_secret(
             vault_path,
             {
-                "code_verifier": code_verifier,
+                "authorization_id": authorization_id or "",
                 "state": state,
                 "redirect_uri": redirect_uri,
             },
         )
 
-        from urllib.parse import urlencode
+        logger.info("Enable Banking 2026: auth URL generated for user %s", user_id)
+        return auth_url
 
-        params = {
-            "response_type": "code",
-            "client_id": self._client_id,
-            "redirect_uri": redirect_uri,
-            "scope": " ".join(ENABLE_SCOPES),
-            "state": state,
-            "code_challenge": code_challenge,
-            "code_challenge_method": "S256",
-        }
-        return f"{self._auth_base}/oauth/authorize?{urlencode(params)}"
+    async def handle_session_callback(self, user_id: UUID, session_id: str) -> None:
+        """Handle the session callback from Enable Banking.
 
-    async def exchange_code_for_token(self, user_id: UUID, code: str, redirect_uri: str) -> None:
-        """Exchange authorization code for access/refresh tokens, store in Vault."""
-        vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
-        code_verifier = await self._vault.read_secret(vault_path, "code_verifier")
-        if not code_verifier:
-            code_verifier = self._generate_code_verifier()
+        GET /sessions/{session_id} → retrieve account IDs, store in Vault.
+        This replaces the old OAuth2 exchange_code_for_token flow.
 
-        return await self._token_request(
-            user_id,
-            grant_type="authorization_code",
-            code=code,
-            redirect_uri=redirect_uri,
-            code_verifier=code_verifier,
-        )
-
-    # ── Token Management ───────────────────────────────────────────
-
-    async def _token_request(self, user_id: UUID, **kwargs: str) -> None:
-        """Execute a token exchange/refresh request and store tokens in Vault."""
-        body: dict[str, str] = {"client_id": self._client_id, **kwargs}
-        if self._client_secret:
-            body["client_secret"] = self._client_secret
+        Args:
+            user_id: The authenticated Stonks user.
+            session_id: The session_id query param from the redirect callback.
+        """
+        jwt_token = self._generate_jwt()
 
         try:
-            response = await self._http.post(f"{self._auth_base}/oauth/token", data=body)
-            response.raise_for_status()
-            token_data = response.json()
+            resp = await self._http.get(
+                f"{ENABLE_BANKING_API}/sessions/{session_id}",
+                headers={
+                    "Authorization": f"Bearer {jwt_token}",
+                    "Accept": "application/json",
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
         except httpx.HTTPStatusError as exc:
-            raise EnableBankingTokenError(
-                f"Token request failed: {exc.response.status_code} {exc.response.text}"
+            raise EnableBankingError(
+                f"GET /sessions/{session_id} failed: {exc.response.status_code} {exc.response.text}"
             ) from exc
 
-        now = datetime.now(UTC)
-        expires_at = int(now.timestamp()) + token_data.get("expires_in", 3600)
+        # Extract account IDs from session response
+        account_ids: list[str] = []
+        for item in data.get("accounts", []):
+            if acc_id := item.get("uid") or item.get("id") or item.get("account_id"):
+                account_ids.append(str(acc_id))
 
+        if not account_ids:
+            raise EnableBankingError(
+                f"Session {session_id} returned no account IDs. "
+                "Ensure the user completed the authentication flow."
+            )
+
+        # Store session data + account IDs in Vault
         vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
         await self._vault.write_secret(
             vault_path,
             {
-                "access_token": token_data["access_token"],
-                "refresh_token": token_data.get("refresh_token", ""),
-                "expires_at": str(expires_at),
-                "token_type": token_data.get("token_type", "Bearer"),
+                "session_id": session_id,
+                "account_ids": ",".join(account_ids),
+                "session_status": data.get("status", "unknown"),
             },
         )
 
-    async def _get_valid_access_token(self, user_id: UUID) -> str:
-        """Return a valid access token, refreshing if expired."""
-        vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
-        access_token = await self._vault.read_secret(vault_path, "access_token")
-        expires_at_str = await self._vault.read_secret(vault_path, "expires_at")
-        refresh_token = await self._vault.read_secret(vault_path, "refresh_token")
+        logger.info(
+            "Enable Banking 2026: session %s resolved for user %s (%d accounts)",
+            session_id,
+            user_id,
+            len(account_ids),
+        )
 
-        if not access_token:
-            raise EnableBankingTokenError("No access token found for user")
+    # ── API Helpers ────────────────────────────────────────────────
 
-        if expires_at_str:
-            expires_at = int(expires_at_str)
-            if datetime.now(UTC).timestamp() > expires_at - 300:
-                if not refresh_token:
-                    raise EnableBankingTokenError("Token expired and no refresh token")
-                await self._token_request(
-                    user_id,
-                    grant_type="refresh_token",
-                    refresh_token=refresh_token,
-                )
-                access_token = await self._vault.read_secret(vault_path, "access_token")
-                if not access_token:
-                    raise EnableBankingTokenError("Failed to get refreshed access token")
+    async def _api_get(self, path: str) -> Any:
+        """Authenticated GET to Enable Banking 2026 API with JWT."""
+        jwt_token = self._generate_jwt()
+        resp = await self._http.get(
+            f"{ENABLE_BANKING_API}{path}",
+            headers={
+                "Authorization": f"Bearer {jwt_token}",
+                "Accept": "application/json",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
 
-        return access_token
-
-    # ── API Calls ──────────────────────────────────────────────────
-
-    async def _api_get(self, user_id: UUID, path: str) -> Any:
-        """Authenticated GET to Enable Banking API with auto-retry on 401."""
-        return await self._api_request_with_retry(user_id, "GET", path)
-
-    async def _api_request_with_retry(
-        self, user_id: UUID, method: str, path: str, retry: bool = True
-    ) -> Any:
-        """Execute API request; if 401, refresh token and retry once."""
-        token = await self._get_valid_access_token(user_id)
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-        }
-        resp = await self._http.request(method, f"{self._api_base}{path}", headers=headers)
-
-        if resp.status_code == 401 and retry:
-            logger.info("Enable Banking: 401, refreshing token and retrying")
-            vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
-            refresh_token = await self._vault.read_secret(vault_path, "refresh_token")
-            if refresh_token:
-                await self._token_request(
-                    user_id,
-                    grant_type="refresh_token",
-                    refresh_token=refresh_token,
-                )
-                return await self._api_request_with_retry(user_id, method, path, retry=False)
-
+    async def _api_post(self, path: str, body: dict[str, Any]) -> Any:
+        """Authenticated POST to Enable Banking 2026 API with JWT."""
+        jwt_token = self._generate_jwt()
+        resp = await self._http.post(
+            f"{ENABLE_BANKING_API}{path}",
+            json=body,
+            headers={
+                "Authorization": f"Bearer {jwt_token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+        )
         resp.raise_for_status()
         return resp.json()
 
     # ── BankConnectorPort Implementation ──────────────────────────
 
     async def list_accounts(self, user_id: UUID) -> list[Account]:
-        """Fetch all bank accounts for a connected user."""
-        try:
-            data = await self._api_get(user_id, "/v2/accounts")
-        except httpx.HTTPStatusError as exc:
-            raise EnableBankingError(
-                f"Failed to fetch accounts: {exc.response.status_code}"
-            ) from exc
+        """Fetch all bank accounts for a connected user.
 
+        Iterates over account_ids stored in Vault (from session callback),
+        calls GET /accounts/{id}/details for each.
+        """
+        vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
+        account_ids_raw = await self._vault.read_secret(vault_path, "account_ids")
+        if not account_ids_raw:
+            raise EnableBankingError(
+                f"No account IDs found for user {user_id}. "
+                "Ensure the session callback completed successfully."
+            )
+
+        account_ids = [aid.strip() for aid in account_ids_raw.split(",") if aid.strip()]
         accounts: list[Account] = []
         now = datetime.now(UTC)
 
-        for item in data.get("accounts", []):
+        for acc_id in account_ids:
+            try:
+                data = await self._api_get(f"/accounts/{acc_id}/details")
+            except httpx.HTTPStatusError as exc:
+                logger.warning("Failed to fetch account %s: %s", acc_id, exc)
+                continue
+
             iban = None
-            if iban_str := item.get("iban"):
+            if iban_str := data.get("iban"):
                 iban = IBAN.try_parse(iban_str)
 
             current_balance = None
-            balance_data = item.get("balances", [{}])
+            balance_data = data.get("balances", [{}])
             if balance_data and balance_data[0].get("balanceAmount"):
                 ba = balance_data[0]
                 try:
@@ -257,15 +354,19 @@ class EnableBankingAdapter(BankConnectorPort):
                     pass
 
             account = Account(
-                id=UUID(item.get("uid", "")),  # Use bank's UID
+                id=UUID(data.get("uid", acc_id)),
                 user_id=user_id,
                 bank_connector="enable_banking",
-                bank_id=item.get("bankId", ""),
+                bank_id=data.get("bankId", ""),
                 iban=iban,
-                holder_name=item.get("ownerName"),
-                account_type=self._map_account_type(item.get("accountType", {}).get("type")),
-                account_name=item.get("name") or item.get("product", "Compte"),
-                currency=item.get("currency", "EUR"),
+                holder_name=data.get("ownerName"),
+                account_type=self._map_account_type(
+                    data.get("accountType", {}).get("type")
+                    if isinstance(data.get("accountType"), dict)
+                    else data.get("accountType")
+                ),
+                account_name=data.get("name") or data.get("product", "Compte"),
+                currency=data.get("currency", "EUR"),
                 current_balance=current_balance,
                 last_synced_at=now,
                 status=AccountStatus.ACTIVE,
@@ -281,14 +382,17 @@ class EnableBankingAdapter(BankConnectorPort):
         since: datetime | None = None,
         until: datetime | None = None,
     ) -> list[Transaction]:
-        """Fetch transactions for a specific account, paginated."""
+        """Fetch transactions for a specific account.
+
+        Uses GET /accounts/{id}/transactions. Pagination: the 2026 API may
+        use continuation_token — we handle it if present, otherwise single page.
+        """
         from urllib.parse import urlencode
 
         continuation_token: str | None = None
         transactions: list[Transaction] = []
 
         while True:
-            url_path = f"/v2/accounts/{account_id}/transactions"
             params: dict[str, str] = {}
             if continuation_token:
                 params["continuation_token"] = continuation_token
@@ -296,14 +400,17 @@ class EnableBankingAdapter(BankConnectorPort):
                 params["date_from"] = since.strftime("%Y-%m-%d")
             if until:
                 params["date_to"] = until.strftime("%Y-%m-%d")
+
+            url_path = f"/accounts/{account_id}/transactions"
             if params:
                 url_path = f"{url_path}?{urlencode(params)}"
 
-            data = await self._api_get(user_id, url_path)
+            data = await self._api_get(url_path)
 
             for item in data.get("transactions", []):
                 transactions.append(self._parse_transaction(item, account_id))
 
+            # Check for pagination (2026 API may or may not use continuation_token)
             continuation_token = data.get("continuation_token")
             if not continuation_token:
                 break
@@ -311,32 +418,47 @@ class EnableBankingAdapter(BankConnectorPort):
         return transactions
 
     async def get_balances(self, user_id: UUID) -> list[BalanceSnapshot]:
-        """Fetch current balances for all connected accounts."""
-        data = await self._api_get(user_id, "/v2/balances")
+        """Fetch current balances for all connected accounts.
+
+        Iterates account_ids from Vault, calls GET /accounts/{id}/balances for each.
+        """
+        vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
+        account_ids_raw = await self._vault.read_secret(vault_path, "account_ids")
+        if not account_ids_raw:
+            raise EnableBankingError(f"No account IDs found for user {user_id}.")
+
+        account_ids = [aid.strip() for aid in account_ids_raw.split(",") if aid.strip()]
         snapshots: list[BalanceSnapshot] = []
         now = datetime.now(UTC)
 
-        for item in data.get("balances", []):
-            bal = item.get("balanceAmount", {})
-            if not bal:
-                continue
+        for acc_id in account_ids:
             try:
-                money = Money(str(bal["amount"]), bal["currency"])
-                snapshots.append(
-                    BalanceSnapshot(
-                        account_id=UUID(item["accountId"]),
-                        balance=money,
-                        currency=bal["currency"],
-                        timestamp=now,
-                        source="psd2",
-                    )
-                )
-            except (KeyError, ValueError, TypeError):
+                data = await self._api_get(f"/accounts/{acc_id}/balances")
+            except httpx.HTTPStatusError as exc:
+                logger.warning("Failed to fetch balances for account %s: %s", acc_id, exc)
                 continue
+
+            for item in data.get("balances", []):
+                bal = item.get("balanceAmount", {})
+                if not bal:
+                    continue
+                try:
+                    money = Money(str(bal["amount"]), bal["currency"])
+                    snapshots.append(
+                        BalanceSnapshot(
+                            account_id=UUID(acc_id),
+                            balance=money,
+                            currency=bal["currency"],
+                            timestamp=now,
+                            source="psd2",
+                        )
+                    )
+                except (KeyError, ValueError, TypeError):
+                    continue
 
         return snapshots
 
-    # ── Parsers ───────────────────────────────────────────────────
+    # ── Parsers (preserved from original) ──────────────────────────
 
     def _parse_transaction(self, item: dict[str, Any], account_id: UUID) -> Transaction:
         amount_data = item.get("transactionAmount", {})

@@ -1,4 +1,4 @@
-"""ConnectBankAccount — OAuth flow to connect a user's bank account."""
+"""ConnectBankAccount — Session flow to connect a user's bank account."""
 
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ class ConnectBankAccountError(Exception):
 
 
 class ConnectBankAccount:
-    """Orchestrate the OAuth flow for connecting a bank account.
+    """Orchestrate the bank connection flow (Enable Banking 2026 JWT + sessions).
 
     Usage:
         use_case = ConnectBankAccount(bank_connector, cashflow_repo)
         auth_url = await use_case.get_authorization_url(user_id, redirect_uri)
-        # User visits auth_url, bank redirects to callback with ?code=...
-        accounts = await use_case.handle_callback(user_id, code, redirect_uri)
+        # User visits auth_url, bank redirects to callback with ?session_id=...
+        accounts = await use_case.handle_callback(user_id, session_id)
     """
 
     def __init__(
@@ -41,26 +41,25 @@ class ConnectBankAccount:
         return self._repo
 
     async def get_authorization_url(self, user_id: UUID, redirect_uri: str) -> str:
-        """Generate the OAuth authorization URL for a user.
+        """Generate the bank authorization URL for a user.
 
         Returns:
             URL the user must visit to authenticate with their bank.
         """
         return await self._connector.get_authorization_url(user_id, redirect_uri)
 
-    async def handle_callback(self, user_id: UUID, code: str, redirect_uri: str) -> list[Account]:
-        """Exchange OAuth code for token, fetch accounts, and persist them.
+    async def handle_callback(self, user_id: UUID, session_id: str) -> list[Account]:
+        """Handle the session callback: resolve session, fetch accounts, persist.
 
         Args:
             user_id: The authenticated Stonks user.
-            code: The OAuth2 authorization code from the bank callback.
-            redirect_uri: The same redirect_uri used in the authorization request.
+            session_id: The session_id query param from the bank redirect callback.
 
         Returns:
             List of Account domain objects fetched from the bank and persisted.
         """
-        # Step 1: Exchange code for tokens (stored in Vault by the adapter)
-        await self._connector.exchange_code_for_token(user_id, code, redirect_uri)
+        # Step 1: Resolve session → account IDs (stored in Vault by the adapter)
+        await self._connector.handle_session_callback(user_id, session_id)
 
         # Step 2: Fetch accounts from the bank
         accounts = await self._connector.list_accounts(user_id)

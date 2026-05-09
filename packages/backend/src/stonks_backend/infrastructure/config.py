@@ -88,18 +88,27 @@ class Settings(BaseSettings):
     # ── CORS ───────────────────────────────────────────────────────
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
-    # ── Enable Banking (PSD2) ──────────────────────────────────────
+    # ── Enable Banking (2026 JWT API) ──────────────────────────────
+    enable_banking_application_id: SecretStr = Field(
+        default=SecretStr(""),
+        description="Enable Banking Application ID (UUID v4). Required for JWT RS256 signing.",
+    )
+    enable_banking_key_path: str = Field(
+        default="./secrets/enablebanking.pem",
+        description="Path to the RSA private key (PKCS#8 PEM) for signing Enable Banking JWTs.",
+    )
+    # [DEPRECATED] Old OAuth2 fields — kept for backward compat with existing .env files
     enable_banking_client_id: SecretStr = Field(
         default=SecretStr(""),
-        description="Enable Banking OAuth2 client_id (sandbox or production).",
+        description="[DEPRECATED] Use enable_banking_application_id instead.",
     )
     enable_banking_client_secret: SecretStr = Field(
         default=SecretStr(""),
-        description="Enable Banking OAuth2 client_secret (optional for PKCE).",
+        description="[DEPRECATED] Enable Banking 2026 uses JWT, not OAuth2 client_secret.",
     )
     enable_banking_sandbox: bool = Field(
-        default=True,
-        description="Use Enable Banking sandbox API instead of production.",
+        default=False,
+        description="[DEPRECATED] Enable Banking 2026 has a single api.enablebanking.com endpoint.",
     )
 
     # ── OpenRouter (LLM Categorization) ────────────────────────────
@@ -119,6 +128,16 @@ class Settings(BaseSettings):
     def _validate_log_format(cls, v: str) -> str:
         if v not in ("console", "json"):
             raise ValueError("log_format must be 'console' or 'json'")
+        return v
+
+    @field_validator("enable_banking_application_id", mode="before")
+    @classmethod
+    def _fallback_bank_app_id(cls, v: str) -> str:
+        """Backward compat: if new var is empty, try old STONKS_ENABLE_BANKING_CLIENT_ID."""
+        if not v or v == "":
+            old_val = os.getenv("STONKS_ENABLE_BANKING_CLIENT_ID", "")
+            if old_val:
+                return old_val
         return v
 
     @property

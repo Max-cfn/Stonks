@@ -69,13 +69,13 @@ async def get_vault_client() -> VaultClient:
 async def get_bank_connector(
     vault: VaultClient = Depends(get_vault_client),
 ) -> EnableBankingAdapter:
-    """Return the EnableBankingAdapter for PSD2 connections."""
+    """Return the EnableBankingAdapter (2026 JWT API) for PSD2 connections."""
     settings = get_settings()
-    client_id = settings.enable_banking_client_id.get_secret_value()
+    application_id = settings.enable_banking_application_id.get_secret_value()
     return EnableBankingAdapter(
         vault=vault,
-        client_id=client_id,
-        sandbox=settings.enable_banking_sandbox,
+        key_path=settings.enable_banking_key_path,
+        application_id=application_id,
     )
 
 
@@ -92,7 +92,7 @@ async def connect_bank(
     current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
 ) -> ConnectResponse:
-    """Initiate OAuth flow: returns the URL the user must visit to authorize."""
+    """Initiate bank connection: returns the URL the user must visit to authorize."""
     settings = get_settings()
     redirect_uri = f"{settings.public_url}/cashflow/banks/callback"
 
@@ -113,22 +113,18 @@ async def connect_bank(
     },
 )
 async def bank_callback(
-    code: str = Query(..., description="OAuth authorization code"),
+    session_id: str = Query(..., description="Session ID from Enable Banking redirect"),
     state: str = Query(None, description="OAuth state parameter"),
     current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> AccountListResponse:
-    """OAuth callback: exchange code for token, fetch and persist accounts."""
-    settings = get_settings()
-    redirect_uri = f"{settings.public_url}/cashflow/banks/callback"
-
+    """Session callback: resolve session_id, fetch and persist accounts."""
     use_case = ConnectBankAccount(bank_connector, repo)
     try:
         accounts = await use_case.handle_callback(
             user_id=current_user.id,
-            code=code,
-            redirect_uri=redirect_uri,
+            session_id=session_id,
         )
     except Exception as exc:
         logger.error("Bank connection failed for user %s: %s", current_user.id, exc)

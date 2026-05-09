@@ -19,18 +19,21 @@ class BankConnectorPort(ABC):
     """Abstract interface for connecting to a bank and fetching data.
 
     Implementations:
-        - EnableBankingAdapter (PSD2 via OAuth2 PKCE)
+        - EnableBankingAdapter (PSD2 via Enable Banking 2026 JWT + sessions)
         - ScrapingFallbackAdapter (feature-flagged, OFF by default)
     """
 
     @abstractmethod
     async def get_authorization_url(self, user_id: UUID, redirect_uri: str) -> str:
-        """Return the OAuth authorization URL the user must visit."""
+        """Return the authorization URL the user must visit to authenticate with their bank."""
         ...
 
     @abstractmethod
-    async def exchange_code_for_token(self, user_id: UUID, code: str, redirect_uri: str) -> None:
-        """Exchange OAuth authorization code for tokens, store in Vault."""
+    async def handle_session_callback(self, user_id: UUID, session_id: str) -> None:
+        """Handle the session callback: resolve session_id → account IDs, store in Vault.
+
+        Replaces the old OAuth2 exchange_code_for_token flow (Enable Banking 2026).
+        """
         ...
 
     @abstractmethod

@@ -82,10 +82,10 @@ class ScrapingFallbackAdapter(BankConnectorPort):
         self._require_enabled()
         return f"{redirect_uri}?scraping=credentials_required"
 
-    async def exchange_code_for_token(self, user_id: UUID, code: str, redirect_uri: str) -> None:
-        """Scraping doesn't use OAuth — credential storage is manual."""
+    async def handle_session_callback(self, user_id: UUID, session_id: str) -> None:
+        """Scraping doesn't use sessions — credential storage is manual."""
         self._require_enabled()
-        logger.warning("exchange_code_for_token called on scraping adapter — no-op")
+        logger.warning("handle_session_callback called on scraping adapter — no-op")
 
     async def list_accounts(self, user_id: UUID) -> list[Account]:
         """Scrape account list from bank website (not implemented — stub)."""

@@ -247,8 +247,7 @@ class EnableBankingAdapter(BankConnectorPort):
             data = resp.json()
         except httpx.HTTPStatusError as exc:
             raise EnableBankingError(
-                f"GET /sessions/{session_id} failed: "
-                f"{exc.response.status_code} {exc.response.text}"
+                f"GET /sessions/{session_id} failed: {exc.response.status_code} {exc.response.text}"
             ) from exc
 
         # Extract account IDs from session response
@@ -426,9 +425,7 @@ class EnableBankingAdapter(BankConnectorPort):
         vault_path = f"{self.VAULT_PATH_PREFIX}/{user_id}"
         account_ids_raw = await self._vault.read_secret(vault_path, "account_ids")
         if not account_ids_raw:
-            raise EnableBankingError(
-                f"No account IDs found for user {user_id}."
-            )
+            raise EnableBankingError(f"No account IDs found for user {user_id}.")
 
         account_ids = [aid.strip() for aid in account_ids_raw.split(",") if aid.strip()]
         snapshots: list[BalanceSnapshot] = []

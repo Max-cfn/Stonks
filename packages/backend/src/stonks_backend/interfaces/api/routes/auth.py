@@ -176,7 +176,7 @@ async def me(
 async def logout(
     response: Response,
     current_user: User = Depends(get_current_user),
-) -> dict:
+) -> dict[str, str]:
     """Clear authentication cookies to log the user out.
 
     Requires authentication. The access and refresh token cookies

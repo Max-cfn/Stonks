@@ -149,9 +149,7 @@ async def bank_callback(
             url=f"{frontend}/en/dashboard?bank_connect=error&reason=connection_failed"
         )
 
-    return RedirectResponse(
-        url=f"{frontend}/en/dashboard?bank_connect=success"
-    )
+    return RedirectResponse(url=f"{frontend}/en/dashboard?bank_connect=success")
 
 
 @router.delete(
@@ -167,7 +165,7 @@ async def disconnect_bank(
     current_user: User = Depends(get_current_user),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
-) -> dict:
+) -> dict[str, str]:
     """Disconnect a bank account. Marks it as disconnected — no data is deleted."""
     use_case = ConnectBankAccount(bank_connector, repo)
     try:

@@ -32,7 +32,7 @@ def _set_token_cookies(response: Response, tokens: TokenPair) -> None:
         key="access_token",
         value=tokens.access_token,
         httponly=True,
-        samesite="strict",
+        samesite="lax",
         secure=False,  # True in production with HTTPS
         max_age=900,  # 15 minutes
         path="/",
@@ -41,7 +41,7 @@ def _set_token_cookies(response: Response, tokens: TokenPair) -> None:
         key="refresh_token",
         value=tokens.refresh_token,
         httponly=True,
-        samesite="strict",
+        samesite="lax",
         secure=False,
         max_age=604800,  # 7 days
         path="/auth/refresh",
@@ -54,14 +54,14 @@ def _delete_token_cookies(response: Response) -> None:
         key="access_token",
         path="/",
         httponly=True,
-        samesite="strict",
+        samesite="lax",
         secure=False,
     )
     response.delete_cookie(
         key="refresh_token",
         path="/auth/refresh",
         httponly=True,
-        samesite="strict",
+        samesite="lax",
         secure=False,
     )
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { LogOut, User, Landmark, Bell, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { LogOut, User, Landmark, Bell, CheckCircle2, XCircle, Loader2, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/useAuth";
-import { useAccounts } from "@/lib/hooks/useCashflow";
+import { useAccounts, useConnectBank, useDisconnectBank } from "@/lib/hooks/useCashflow";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
@@ -63,11 +63,25 @@ function SettingsContent() {
   const c = useTranslations("common");
   const { user, isLoading, logout } = useAuth();
   const { data: accountsData, isLoading: loadingAccounts } = useAccounts();
+  const connectBank = useConnectBank();
+  const disconnectBank = useDisconnectBank();
 
   // Wait for auth context to resolve before rendering user details
   if (isLoading) {
     return <SettingsSkeleton />;
   }
+
+  const handleConnect = () => {
+    connectBank.mutate(undefined, {
+      onSuccess: (data) => {
+        window.location.href = data.authorization_url;
+      },
+    });
+  };
+
+  const handleDisconnect = (accountId: string) => {
+    disconnectBank.mutate(accountId);
+  };
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -103,7 +117,7 @@ function SettingsContent() {
             {t("banks")}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           {loadingAccounts ? (
             <LoadingSkeleton variant="card" className="h-24" />
           ) : !accountsData?.accounts?.length ? (
@@ -115,34 +129,59 @@ function SettingsContent() {
                   key={account.id}
                   className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
                 >
-                  <div>
-                    <p className="text-sm font-medium">
+                  <div className="flex-1 min-w-0 mr-2">
+                    <p className="text-sm font-medium truncate">
                       {account.account_name || account.iban || account.id}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {account.bank_connector} · {account.currency}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {account.status === "active" ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    ) : account.status === "syncing" ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {account.status === "active"
-                        ? t("connected")
-                        : account.status === "syncing"
-                          ? t("syncing")
-                          : t("disconnected")}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      {account.status === "active" ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      ) : account.status === "syncing" ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {account.status === "active"
+                          ? t("connected")
+                          : account.status === "syncing"
+                            ? t("syncing")
+                            : t("disconnected")}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDisconnect(account.id)}
+                      disabled={disconnectBank.isPending}
+                      title={t("disconnect")}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                    </Button>
                   </div>
                 </li>
               ))}
             </ul>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleConnect}
+            disabled={connectBank.isPending}
+            className="gap-2"
+          >
+            {connectBank.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {t("addBank")}
+          </Button>
         </CardContent>
       </Card>
 

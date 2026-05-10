@@ -101,6 +101,8 @@
     "connected": "Connecté",
     "disconnected": "Déconnecté",
     "syncing": "Synchro...",
-    "noBanks": "Aucune banque connectée"
+    "noBanks": "Aucune banque connectée",
+    "disconnect": "Déconnecter",
+    "addBank": "Ajouter une banque"
   }
 }

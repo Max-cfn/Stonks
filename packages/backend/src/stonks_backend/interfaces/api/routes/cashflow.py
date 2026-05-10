@@ -10,6 +10,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -105,10 +106,8 @@ async def connect_bank(
 
 @router.get(
     "/banks/callback",
-    response_model=AccountListResponse,
     responses={
         400: {"model": ErrorResponse},
-        401: {"model": ErrorResponse},
         502: {"model": ErrorResponse},
     },
 )
@@ -117,54 +116,68 @@ async def bank_callback(
     state: str = Query(..., description="State parameter with encoded user_id"),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
-) -> AccountListResponse:
+) -> RedirectResponse:
     """Session callback: exchange code for session, fetch and persist accounts.
 
     No authentication required — the user_id is encoded in the state parameter
     (format: "{user_id}:{random_token}") created during get_authorization_url().
+
+    Redirects the user's browser to the frontend dashboard on completion.
     """
+    settings = get_settings()
+    frontend = settings.frontend_url.rstrip("/")
+
     # Decode user_id from state parameter
     try:
-        from uuid import UUID
-
         user_id_str = state.split(":")[0]
         user_id = UUID(user_id_str)
     except (ValueError, IndexError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid state parameter: {exc}",
-        ) from exc
+        logger.warning("Invalid state parameter in bank callback: %s", exc)
+        return RedirectResponse(
+            url=f"{frontend}/en/dashboard?bank_connect=error&reason=invalid_state"
+        )
 
     use_case = ConnectBankAccount(bank_connector, repo)
     try:
-        accounts = await use_case.handle_callback(
+        await use_case.handle_callback(
             user_id=user_id,
             code=code,
         )
     except Exception as exc:
         logger.error("Bank connection failed for user %s: %s", user_id, exc)
+        return RedirectResponse(
+            url=f"{frontend}/en/dashboard?bank_connect=error&reason=connection_failed"
+        )
+
+    return RedirectResponse(
+        url=f"{frontend}/en/dashboard?bank_connect=success"
+    )
+
+
+@router.delete(
+    "/banks/{account_id}",
+    responses={
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+    },
+)
+async def disconnect_bank(
+    account_id: UUID,
+    current_user: User = Depends(get_current_user),
+    repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
+    bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
+) -> dict:
+    """Disconnect a bank account. Marks it as disconnected — no data is deleted."""
+    use_case = ConnectBankAccount(bank_connector, repo)
+    try:
+        await use_case.disconnect_bank(current_user.id, account_id)
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Bank connection failed: {exc}",
+            detail=f"Disconnect failed: {exc}",
         ) from exc
-
-    return AccountListResponse(
-        accounts=[
-            AccountResponse(
-                id=str(a.id),
-                bank_connector=a.bank_connector,
-                bank_id=a.bank_id,
-                iban=a.iban.pretty if a.iban else "N/A",
-                account_name=a.account_name,
-                account_type=a.account_type.value,
-                currency=a.currency,
-                current_balance=str(a.current_balance) if a.current_balance else None,
-                status=a.status.value,
-                last_synced_at=a.last_synced_at.isoformat() if a.last_synced_at else None,
-            )
-            for a in accounts
-        ]
-    )
+    return {"status": "disconnected"}
 
 
 # ── Accounts ──────────────────────────────────────────────────────

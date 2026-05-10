@@ -26,6 +26,13 @@ export async function apiGet<T>(
 }
 
 /**
+ * Simple typed DELETE wrapper around apiClient.
+ */
+export async function apiDelete<T>(path: string): Promise<T> {
+  return apiClient<T>(path, { method: "DELETE" });
+}
+
+/**
  * Simple typed POST wrapper around apiClient.
  */
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {

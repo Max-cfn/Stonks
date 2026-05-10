@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Landmark, ArrowUpRight, ArrowDownRight, Filter, Loader2 } from "lucide-react";
+import { Landmark, ArrowUpRight, ArrowDownRight, Filter, Loader2, Plus } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -253,7 +253,10 @@ function CashflowContent() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <ConnectBankButton />
+      </div>
 
       {/* Filters */}
       <Card>

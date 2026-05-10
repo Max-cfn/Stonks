@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost } from "./api";
+import { apiGet, apiPost, apiDelete } from "./api";
 import type {
   AccountListResponse,
   TransactionListResponse,
@@ -79,6 +79,19 @@ export function useSyncAccount() {
       apiPost<SyncResponse>(`/api/cashflow/accounts/${accountId}/sync`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cashflowKeys.accounts() });
+      queryClient.invalidateQueries({ queryKey: cashflowKeys.all });
+    },
+  });
+}
+
+// ── useDisconnectBank ──
+export function useDisconnectBank() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountId: string) =>
+      apiDelete<{ status: string }>(`/api/cashflow/banks/${accountId}`),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cashflowKeys.all });
     },
   });

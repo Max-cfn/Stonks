@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     public_url: str = "http://localhost:8000"  # For OAuth redirect_uri
+    frontend_url: str = "http://localhost:4173"  # For OAuth callback redirect
 
     # ── Database ───────────────────────────────────────────────────
     database_url: SecretStr = Field(

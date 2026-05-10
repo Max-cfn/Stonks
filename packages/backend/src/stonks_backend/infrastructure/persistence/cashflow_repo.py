@@ -114,8 +114,12 @@ class CashflowSqlRepository(CashflowRepositoryPort):
         return self._model_to_account(model) if model is not None else None
 
     async def get_accounts_by_user(self, user_id: UUID) -> list[Account]:
-        """Retrieve all accounts for a user."""
-        stmt = select(CashflowAccountModel).where(CashflowAccountModel.user_id == user_id)
+        """Retrieve active (non-disconnected) accounts for a user."""
+        stmt = (
+            select(CashflowAccountModel)
+            .where(CashflowAccountModel.user_id == user_id)
+            .where(CashflowAccountModel.status != "disconnected")
+        )
         result = await self._session.execute(stmt)
         return [self._model_to_account(m) for m in result.scalars().all()]
 

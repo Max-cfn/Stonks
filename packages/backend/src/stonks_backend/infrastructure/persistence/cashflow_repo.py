@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import CursorResult, select, text
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -161,17 +161,15 @@ class CashflowSqlRepository(CashflowRepositoryPort):
                 }
             )
 
-        # Execute batch INSERT ON CONFLICT DO NOTHING.
-        # session.execute() returns Result[Any] in stubs but the actual runtime
-        # object for INSERT/UPDATE/DELETE is CursorResult, which has .rowcount.
-        # We cast() to inform mypy strict — this is safe by SQLAlchemy contract.
+        # Batch INSERT ON CONFLICT DO NOTHING.
         stmt = insert(CashflowTransactionModel)
         stmt = stmt.on_conflict_do_nothing(constraint="uq_account_bank_tx")
         raw_result = await self._session.execute(stmt, values)
-        result = cast("CursorResult[Any]", raw_result)
         await self._session.flush()
 
-        return result.rowcount if result.rowcount else 0
+        # .rowcount may not be available on all Result subclasses (e.g. IteratorResult)
+        rowcount = getattr(raw_result, "rowcount", None)
+        return rowcount if rowcount else 0
 
     async def update_transaction_raw_label(self, tx_id: TransactionId, raw_label: str) -> None:
         """Update the encrypted raw_label for a transaction (post-insert)."""

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Laptop } from "lucide-react";
@@ -15,8 +16,17 @@ import { UserMenu } from "./UserMenu";
 export function Topbar() {
   const t = useTranslations("common");
   const { setTheme, theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  const ThemeIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Laptop;
+  useEffect(() => setMounted(true), []);
+
+  const ThemeIcon = !mounted
+    ? Laptop
+    : theme === "dark"
+      ? Moon
+      : theme === "light"
+        ? Sun
+        : Laptop;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-2 border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">

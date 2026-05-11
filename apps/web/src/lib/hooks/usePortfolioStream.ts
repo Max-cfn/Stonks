@@ -18,28 +18,34 @@ const INITIAL_BACKOFF_MS = 1_000;
 const CLOSE_CODE_INVALID_TOKEN = 4001;
 
 /**
- * Build the WebSocket base URL (host:port) from environment or fallback.
+ * Build WebSocket host and protocol from environment or fallback.
  *
  * Priority:
- *   1. NEXT_PUBLIC_WS_URL env var (e.g. "http://localhost:4174" or "192.168.1.56:4174")
- *   2. window.location.host (e.g. "192.168.1.56") + port 4174
+ *   1. NEXT_PUBLIC_WS_URL env var
+ *   2. HTTPS → same-origin wss:// via reverse proxy; HTTP → ws://host:4174
  */
-function getWsBaseUrl(): string {
-  if (typeof window === "undefined") return "localhost:4174";
+function getWsBaseUrl(): { host: string; protocol: "ws" | "wss" } {
+  if (typeof window === "undefined")
+    return { host: "localhost:4174", protocol: "ws" };
 
   const envUrl = process.env.NEXT_PUBLIC_WS_URL;
   if (envUrl) {
     try {
       const u = new URL(envUrl);
-      return `${u.hostname}:${u.port || "4174"}`;
+      return {
+        host: `${u.hostname}:${u.port || "4174"}`,
+        protocol: u.protocol === "https:" ? "wss" : "ws",
+      };
     } catch {
-      // Not a valid URL — assume it's already "host:port"
-      return envUrl;
+      return { host: envUrl, protocol: "ws" };
     }
   }
 
-  // Fallback: same hostname as the page, backend port
-  return `${window.location.hostname}:4174`;
+  // HTTPS → same-origin via reverse proxy (Caddy); HTTP → direct backend port
+  if (window.location.protocol === "https:") {
+    return { host: window.location.host, protocol: "wss" };
+  }
+  return { host: `${window.location.hostname}:4174`, protocol: "ws" };
 }
 
 export function usePortfolioStream(): UsePortfolioStreamReturn {
@@ -48,7 +54,9 @@ export function usePortfolioStream(): UsePortfolioStreamReturn {
 
   const wsRef = useRef<WebSocket | null>(null);
   const backoffRef = useRef(INITIAL_BACKOFF_MS);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const mountedRef = useRef(true);
 
   // Snapshot the token ONCE at mount time so we don't reconnect
@@ -75,7 +83,8 @@ export function usePortfolioStream(): UsePortfolioStreamReturn {
 
     setStatus("connecting");
 
-    const wsUrl = `ws://${getWsBaseUrl()}/portfolio/stream?token=${encodeURIComponent(tokenAtMount)}`;
+    const { host, protocol } = getWsBaseUrl();
+    const wsUrl = `${protocol}://${host}/portfolio/stream?token=${encodeURIComponent(tokenAtMount)}`;
 
     try {
       const ws = new WebSocket(wsUrl);

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Landmark, ArrowUpRight, ArrowDownRight, Filter, Loader2, Plus } from "lucide-react";
+import { Landmark, ArrowUpRight, ArrowDownRight, Filter, Loader2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -12,7 +12,7 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts";
-import { useAccounts, useTransactions, useCashflowSummary, useConnectBank } from "@/lib/hooks/useCashflow";
+import { useAccounts, useTransactions, useConnectBank } from "@/lib/hooks/useCashflow";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -33,6 +33,45 @@ function formatAmount(amount: string | number, currency = "EUR"): string {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR");
+}
+
+// ── Period helpers ──
+type Period =
+  | "current-month"
+  | "last-month"
+  | string; // "YYYY-MM" for specific months
+
+function getPeriodDates(period: Period): { from: string; until: string } {
+  const now = new Date();
+  if (period === "current-month") {
+    const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    return { from, until: "" };
+  }
+  if (period === "last-month") {
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+    const from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+    const until = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
+    return { from, until };
+  }
+  // "YYYY-MM"
+  const [year, month] = period.split("-");
+  const lastDay = new Date(parseInt(year), parseInt(month), 0); // day 0 = last day of prev month
+  const from = `${year}-${month}-01`;
+  const until = `${year}-${month}-${String(lastDay.getDate()).padStart(2, "0")}`;
+  return { from, until };
+}
+
+function generateMonthOptions(): { value: string; label: string }[] {
+  const months: { value: string; label: string }[] = [];
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    months.push({ value, label: fmt.format(d) });
+  }
+  return months;
 }
 
 // ── Transaction Table ──
@@ -199,32 +238,36 @@ function CashflowContent() {
   const t = useTranslations("cashflow");
 
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateUntil, setDateUntil] = useState("");
-  // Draft state for date inputs — only applied on button click
-  const [draftDateFrom, setDraftDateFrom] = useState("");
-  const [draftDateUntil, setDraftDateUntil] = useState("");
+  const [selectedPeriod, setSelectedPeriod] = useState<Period>("current-month");
 
   const { data: accountsData, isLoading: loadingAccounts } = useAccounts();
-  const summary = useCashflowSummary("month");
+
+  const { from, until } = getPeriodDates(selectedPeriod);
 
   const queryAccountId = selectedAccountId || undefined;
 
   const { data: transactionsData, isLoading: loadingTx } = useTransactions(
     queryAccountId,
     {
-      since: dateFrom || undefined,
-      until: dateUntil || undefined,
+      since: from || undefined,
+      until: until || undefined,
     },
   );
 
-  const handleApplyFilters = () => {
-    setDateFrom(draftDateFrom);
-    setDateUntil(draftDateUntil);
-  };
+  // Compute income/expenses client-side from filtered transactions
+  const { income, expenses } = useMemo(() => {
+    const txs = transactionsData?.transactions ?? [];
+    let inc = 0;
+    let exp = 0;
+    for (const tx of txs) {
+      const amt = typeof tx.amount === "string" ? parseFloat(tx.amount) : 0;
+      if (amt > 0) inc += amt;
+      else exp += amt;
+    }
+    return { income: inc, expenses: exp };
+  }, [transactionsData]);
 
-  const hasPendingFilters =
-    draftDateFrom !== dateFrom || draftDateUntil !== dateUntil;
+  const monthOptions = useMemo(() => generateMonthOptions(), []);
 
   // ── Loading ──
   if (loadingAccounts) {
@@ -255,12 +298,6 @@ function CashflowContent() {
 
   const accounts = accountsData.accounts;
   const transactions = transactionsData?.transactions ?? [];
-  const income = summary.data?.total_income
-    ? parseFloat(summary.data.total_income)
-    : 0;
-  const expenses = summary.data?.total_expenses
-    ? parseFloat(summary.data.total_expenses)
-    : 0;
 
   return (
     <div className="space-y-6">
@@ -292,47 +329,22 @@ function CashflowContent() {
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              {t("dateFrom")}
+              {t("period")}
             </label>
-            <input
-              type="date"
+            <select
               className="h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              value={draftDateFrom}
-              onChange={(e) => setDraftDateFrom(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
-              {t("dateTo")}
-            </label>
-            <input
-              type="date"
-              className="h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              value={draftDateUntil}
-              onChange={(e) => setDraftDateUntil(e.target.value)}
-            />
-          </div>
-          <Button
-            size="sm"
-            onClick={handleApplyFilters}
-            disabled={!hasPendingFilters}
-            className="h-9"
-          >
-            {t("applyFilter")}
-          </Button>
-          {hasPendingFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9"
-              onClick={() => {
-                setDraftDateFrom(dateFrom);
-                setDraftDateUntil(dateUntil);
-              }}
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
             >
-              {t("resetFilter")}
-            </Button>
-          )}
+              <option value="current-month">{t("currentMonth")}</option>
+              <option value="last-month">{t("lastMonth")}</option>
+              {monthOptions.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </CardContent>
       </Card>
 

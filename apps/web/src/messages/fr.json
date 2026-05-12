@@ -57,8 +57,9 @@
     "allAccounts": "Tous les comptes",
     "noAccounts": "Aucun compte bancaire",
     "noAccountsDesc": "Connectez un compte bancaire pour voir vos transactions.",
-    "dateFrom": "Du",
-    "dateTo": "Au",
+    "period": "Période",
+    "currentMonth": "Mois en cours",
+    "lastMonth": "Mois dernier",
     "income": "Revenus",
     "expenses": "Dépenses",
     "category": "Catégorie",
@@ -66,9 +67,7 @@
     "description": "Description",
     "amount": "Montant",
     "noTransactions": "Aucune transaction trouvée",
-    "connectAccount": "Connecter un compte",
-    "applyFilter": "Appliquer",
-    "resetFilter": "Réinitialiser"
+    "connectAccount": "Connecter un compte"
   },
   "portfolio": {
     "title": "Portefeuille",

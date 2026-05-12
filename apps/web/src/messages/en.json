@@ -57,8 +57,9 @@
     "allAccounts": "All accounts",
     "noAccounts": "No bank accounts",
     "noAccountsDesc": "Connect a bank account to view your transactions.",
-    "dateFrom": "From",
-    "dateTo": "To",
+    "period": "Period",
+    "currentMonth": "Current month",
+    "lastMonth": "Last month",
     "income": "Income",
     "expenses": "Expenses",
     "category": "Category",
@@ -66,9 +67,7 @@
     "description": "Description",
     "amount": "Amount",
     "noTransactions": "No transactions found",
-    "connectAccount": "Connect account",
-    "applyFilter": "Apply",
-    "resetFilter": "Reset"
+    "connectAccount": "Connect account"
   },
   "portfolio": {
     "title": "Portfolio",

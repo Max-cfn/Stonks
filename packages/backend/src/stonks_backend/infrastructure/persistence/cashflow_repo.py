@@ -200,15 +200,15 @@ class CashflowSqlRepository(CashflowRepositoryPort):
         limit: int = 200,
         offset: int = 0,
     ) -> list[Transaction]:
-        """Fetch paginated transactions for an account, optionally filtered by date."""
+        """Fetch paginated transactions for an account, optionally filtered by booking_date."""
         stmt = select(CashflowTransactionModel).where(
             CashflowTransactionModel.account_id == account_id
         )
         if since is not None:
-            stmt = stmt.where(CashflowTransactionModel.created_at >= since)
+            stmt = stmt.where(CashflowTransactionModel.booking_date >= since)
         if until is not None:
-            stmt = stmt.where(CashflowTransactionModel.created_at <= until)
-        stmt = stmt.order_by(CashflowTransactionModel.created_at.desc())
+            stmt = stmt.where(CashflowTransactionModel.booking_date <= until)
+        stmt = stmt.order_by(CashflowTransactionModel.booking_date.desc())
         stmt = stmt.limit(limit).offset(offset)
 
         result = await self._session.execute(stmt)
@@ -220,7 +220,7 @@ class CashflowSqlRepository(CashflowRepositoryPort):
         since: datetime | None = None,
         until: datetime | None = None,
     ) -> int:
-        """Count transactions for an account, optionally filtered by date."""
+        """Count transactions for an account, optionally filtered by booking_date."""
         from sqlalchemy import func
 
         stmt = (
@@ -229,9 +229,9 @@ class CashflowSqlRepository(CashflowRepositoryPort):
             .where(CashflowTransactionModel.account_id == account_id)
         )
         if since is not None:
-            stmt = stmt.where(CashflowTransactionModel.created_at >= since)
+            stmt = stmt.where(CashflowTransactionModel.booking_date >= since)
         if until is not None:
-            stmt = stmt.where(CashflowTransactionModel.created_at <= until)
+            stmt = stmt.where(CashflowTransactionModel.booking_date <= until)
 
         result = await self._session.execute(stmt)
         count = result.scalar_one()

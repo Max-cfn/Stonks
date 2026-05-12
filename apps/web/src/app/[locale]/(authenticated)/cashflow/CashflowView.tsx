@@ -144,8 +144,7 @@ function SummaryChart({
   expensesLabel: string;
 }) {
   const data = [
-    { name: incomeLabel, value: income },
-    { name: expensesLabel, value: Math.abs(expenses) },
+    { name: "", income, expenses: Math.abs(expenses) },
   ];
 
   return (
@@ -171,14 +170,14 @@ function SummaryChart({
               }
             />
             <RechartsTooltip
-              formatter={(value: number) => [formatAmount(value), ""]}
+              formatter={(value: number, name: string) => [
+                formatAmount(value),
+                name === "income" ? incomeLabel : expensesLabel,
+              ]}
               cursor={{ fill: "hsl(var(--muted))", opacity: 0.2 }}
             />
-            <Bar
-              dataKey="value"
-              fill="hsl(var(--primary))"
-              radius={[4, 4, 0, 0]}
-            />
+            <Bar dataKey="income" fill="#16a34a" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="expenses" fill="#ea580c" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

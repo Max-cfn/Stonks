@@ -36,27 +36,10 @@ function formatDate(iso: string): string {
 }
 
 // ── Period helpers ──
-type Period =
-  | "current-month"
-  | "last-month"
-  | string; // "YYYY-MM" for specific months
 
-function getPeriodDates(period: Period): { from: string; until: string } {
-  const now = new Date();
-  if (period === "current-month") {
-    const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-    return { from, until: "" };
-  }
-  if (period === "last-month") {
-    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-    const from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-    const until = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
-    return { from, until };
-  }
-  // "YYYY-MM"
-  const [year, month] = period.split("-");
-  const lastDay = new Date(parseInt(year), parseInt(month), 0); // day 0 = last day of prev month
+function getPeriodDates(yyyyMm: string): { from: string; until: string } {
+  const [year, month] = yyyyMm.split("-");
+  const lastDay = new Date(parseInt(year), parseInt(month), 0);
   const from = `${year}-${month}-01`;
   const until = `${year}-${month}-${String(lastDay.getDate()).padStart(2, "0")}`;
   return { from, until };
@@ -237,17 +220,26 @@ function ConnectBankButton() {
 function CashflowContent() {
   const t = useTranslations("cashflow");
 
+  const monthOptions = useMemo(() => generateMonthOptions(), []);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(monthOptions[0]?.value ?? "");
+  // Auto-select first account when accounts load
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
-  const [selectedPeriod, setSelectedPeriod] = useState<Period>("current-month");
+  const [accountInitialized, setAccountInitialized] = useState(false);
 
   const { data: accountsData, isLoading: loadingAccounts } = useAccounts();
 
+  // Auto-select first account on first load
+  if (!accountInitialized && accountsData?.accounts?.length) {
+    setAccountInitialized(true);
+    if (!selectedAccountId) {
+      setSelectedAccountId(accountsData.accounts[0].id);
+    }
+  }
+
   const { from, until } = getPeriodDates(selectedPeriod);
 
-  const queryAccountId = selectedAccountId || undefined;
-
   const { data: transactionsData, isLoading: loadingTx } = useTransactions(
-    queryAccountId,
+    selectedAccountId || undefined,
     {
       since: from || undefined,
       until: until || undefined,
@@ -266,8 +258,6 @@ function CashflowContent() {
     }
     return { income: inc, expenses: exp };
   }, [transactionsData]);
-
-  const monthOptions = useMemo(() => generateMonthOptions(), []);
 
   // ── Loading ──
   if (loadingAccounts) {
@@ -336,8 +326,6 @@ function CashflowContent() {
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
             >
-              <option value="current-month">{t("currentMonth")}</option>
-              <option value="last-month">{t("lastMonth")}</option>
               {monthOptions.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}

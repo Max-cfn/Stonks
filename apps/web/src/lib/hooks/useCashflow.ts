@@ -14,8 +14,8 @@ import type {
 export const cashflowKeys = {
   all: ["cashflow"] as const,
   accounts: () => [...cashflowKeys.all, "accounts"] as const,
-  transactions: (accountId?: string) =>
-    [...cashflowKeys.all, "transactions", accountId ?? "all"] as const,
+  transactions: (accountId?: string, filters?: TransactionFilters) =>
+    [...cashflowKeys.all, "transactions", accountId ?? "all", JSON.stringify(filters)] as const,
   summary: (period?: string) =>
     [...cashflowKeys.all, "summary", period ?? "all"] as const,
 };
@@ -45,10 +45,10 @@ export function useTransactions(accountId?: string, filters?: TransactionFilters
   };
 
   return useQuery({
-    queryKey: cashflowKeys.transactions(accountId),
+    queryKey: cashflowKeys.transactions(accountId, filters),
     queryFn: () =>
       apiGet<TransactionListResponse>("/api/cashflow/transactions", merged),
-    staleTime: 30_000,
+    staleTime: 0,
     enabled: !!accountId,
   });
 }

@@ -42,8 +42,8 @@ class SyncTransactions:
         Fetches transactions since last sync (or last 30 days if never synced),
         persists new ones (dedup by bank_tx_id).
 
-        When force=True, ignores last_synced_at and fetches all available
-        transactions (since 2020-01-01).
+        When force=True, ignores last_synced_at and fetches without date filters
+        to get all available transactions from the ASPSP.
         """
         account = await self._repo.get_account(account_id)
         if account is None:
@@ -54,12 +54,13 @@ class SyncTransactions:
 
         # Determine sync window
         if force:
-            since = datetime.now(UTC) - timedelta(days=90)
+            since = None
+            until = None
         else:
             since = account.last_synced_at
             if since is None:
                 since = datetime.now(UTC) - timedelta(days=30)
-        until = datetime.now(UTC)
+            until = datetime.now(UTC)
 
         # Fetch from bank
         transactions = await self._connector.fetch_transactions(

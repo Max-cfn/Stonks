@@ -227,11 +227,13 @@ async def list_accounts(
 async def sync_transactions(
     request: Request,
     account_id: UUID,
+    force: bool = Query(False, description="Force full resync from 2020-01-01"),
     current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> SyncResponse:
-    """Trigger transaction sync for an account. Rate limited: 1/minute/account."""
+    """Trigger transaction sync for an account. Rate limited: 1/minute/account.
+    Use force=true to re-fetch all historical transactions and refresh amounts."""
     # Verify ownership
     account = await repo.get_account(account_id)
     if account is None:
@@ -244,7 +246,7 @@ async def sync_transactions(
 
     use_case = SyncTransactions(bank_connector, repo)
     try:
-        result = await use_case.sync(account_id)
+        result = await use_case.sync(account_id, force=force)
     except Exception as exc:
         logger.error("Sync failed for account %s: %s", account_id, exc)
         raise HTTPException(
@@ -306,10 +308,14 @@ async def list_transactions(
                 amount=str(tx.amount),
                 currency=tx.currency,
                 description=tx.description,
+                transaction_date=tx.booking_date.isoformat()
+                if tx.booking_date
+                else (tx.value_date.isoformat() if tx.value_date else None),
                 booking_date=tx.booking_date.isoformat() if tx.booking_date else None,
                 value_date=tx.value_date.isoformat() if tx.value_date else None,
                 status=tx.status.value,
                 source=tx.source.value,
+                is_expense=tx.amount.is_negative,
                 creditor_name=tx.creditor_name,
                 debtor_name=tx.debtor_name,
                 category_id=str(tx.category_id) if tx.category_id else None,

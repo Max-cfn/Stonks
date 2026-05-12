@@ -128,8 +128,9 @@ class CashflowSqlRepository(CashflowRepositoryPort):
     async def save_transactions(self, transactions: list[Transaction]) -> int:
         """Persist transactions with dedup on (account_id, bank_tx_id).
 
-        Uses PostgreSQL INSERT ... ON CONFLICT DO NOTHING to skip duplicates.
-        Returns the number of rows that were actually inserted.
+        Uses PostgreSQL INSERT ... ON CONFLICT DO UPDATE to refresh bank-provided
+        fields (amount, dates, counterparty info) while preserving user-applied
+        category_id and raw_label_encrypted.
         """
         if not transactions:
             return 0
@@ -161,9 +162,23 @@ class CashflowSqlRepository(CashflowRepositoryPort):
                 }
             )
 
-        # Batch INSERT ON CONFLICT DO NOTHING.
+        # ON CONFLICT: update bank-provided fields, preserve user category.
         stmt = insert(CashflowTransactionModel)
-        stmt = stmt.on_conflict_do_nothing(constraint="uq_account_bank_tx")
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_account_bank_tx",
+            set_={
+                "amount": stmt.excluded.amount,
+                "currency": stmt.excluded.currency,
+                "description": stmt.excluded.description,
+                "booking_date": stmt.excluded.booking_date,
+                "value_date": stmt.excluded.value_date,
+                "status": stmt.excluded.status,
+                "creditor_name": stmt.excluded.creditor_name,
+                "creditor_iban": stmt.excluded.creditor_iban,
+                "debtor_name": stmt.excluded.debtor_name,
+                "debtor_iban": stmt.excluded.debtor_iban,
+            },
+        )
         raw_result = await self._session.execute(stmt, values)
         await self._session.flush()
 

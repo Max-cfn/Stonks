@@ -74,10 +74,12 @@ class TransactionResponse(BaseModel):
     amount: str
     currency: str
     description: str
+    transaction_date: str | None = None
     booking_date: str | None = None
     value_date: str | None = None
     status: str
     source: str
+    is_expense: bool = False
     creditor_name: str | None = None
     debtor_name: str | None = None
     category_id: str | None = None

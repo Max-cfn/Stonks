@@ -22,6 +22,7 @@ from stonks_backend.infrastructure.persistence.portfolio_repo import (
     PortfolioSqlRepository,
 )
 from stonks_backend.interfaces.api.routes.auth import router as auth_router
+from stonks_backend.interfaces.api.routes.cashflow import limiter as cashflow_limiter
 from stonks_backend.interfaces.api.routes.cashflow import router as cashflow_router
 from stonks_backend.interfaces.api.routes.health import router as health_router
 from stonks_backend.interfaces.api.routes.portfolio import router as portfolio_router
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     )
 
     # Rate limit handler
+    app.state.limiter = cashflow_limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     _register_routers(app)

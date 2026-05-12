@@ -396,17 +396,17 @@ class EnableBankingAdapter(BankConnectorPort):
         """Fetch transactions for a specific account.
 
         Uses GET /accounts/{id}/transactions. Pagination: the 2026 API may
-        use continuation_token — we handle it if present, otherwise single page.
+        use continuation_key — we handle it if present, otherwise single page.
         """
         from urllib.parse import urlencode
 
-        continuation_token: str | None = None
+        continuation_key: str | None = None
         transactions: list[Transaction] = []
 
         while True:
             params: dict[str, str] = {}
-            if continuation_token:
-                params["continuation_token"] = continuation_token
+            if continuation_key:
+                params["continuation_key"] = continuation_key
             if since:
                 params["date_from"] = since.strftime("%Y-%m-%d")
             if until:
@@ -421,9 +421,9 @@ class EnableBankingAdapter(BankConnectorPort):
             for item in data.get("transactions", []):
                 transactions.append(self._parse_transaction(item, account_id))
 
-            # Check for pagination (2026 API may or may not use continuation_token)
-            continuation_token = data.get("continuation_token")
-            if not continuation_token:
+            # Check for pagination (2026 API uses continuation_key)
+            continuation_key = data.get("continuation_key")
+            if not continuation_key:
                 break
 
         return transactions
@@ -475,10 +475,16 @@ class EnableBankingAdapter(BankConnectorPort):
     def _parse_transaction(self, item: dict[str, Any], account_id: UUID) -> Transaction:
         # Enable Banking 2026 API uses snake_case field names
         amount_data = item.get("transaction_amount", {}) or {}
-        amount = Money(
-            str(amount_data.get("amount", "0")),
-            amount_data.get("currency", "EUR"),
-        )
+        raw_amount = str(amount_data.get("amount", "0"))
+        currency = amount_data.get("currency", "EUR")
+
+        # Credit/debit indicator: CRDT = positive, DBIT = negative
+        # Check at transaction level first, then inside transaction_amount
+        cdi = item.get("credit_debit_indicator") or amount_data.get("credit_debit_indicator")
+        if cdi == "DBIT":
+            raw_amount = f"-{raw_amount.lstrip('-')}"
+
+        amount = Money(raw_amount, currency)
         desc_lines = item.get("remittance_information", []) or []
         description = "\n".join(desc_lines) if desc_lines else ""
 

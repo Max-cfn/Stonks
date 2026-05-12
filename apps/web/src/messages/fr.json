@@ -66,7 +66,9 @@
     "description": "Description",
     "amount": "Montant",
     "noTransactions": "Aucune transaction trouvée",
-    "connectAccount": "Connecter un compte"
+    "connectAccount": "Connecter un compte",
+    "applyFilter": "Appliquer",
+    "resetFilter": "Réinitialiser"
   },
   "portfolio": {
     "title": "Portefeuille",

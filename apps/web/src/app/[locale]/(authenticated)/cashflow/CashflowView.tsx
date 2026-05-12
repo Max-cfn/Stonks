@@ -201,6 +201,9 @@ function CashflowContent() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateUntil, setDateUntil] = useState("");
+  // Draft state for date inputs — only applied on button click
+  const [draftDateFrom, setDraftDateFrom] = useState("");
+  const [draftDateUntil, setDraftDateUntil] = useState("");
 
   const { data: accountsData, isLoading: loadingAccounts } = useAccounts();
   const summary = useCashflowSummary("month");
@@ -214,6 +217,14 @@ function CashflowContent() {
       until: dateUntil || undefined,
     },
   );
+
+  const handleApplyFilters = () => {
+    setDateFrom(draftDateFrom);
+    setDateUntil(draftDateUntil);
+  };
+
+  const hasPendingFilters =
+    draftDateFrom !== dateFrom || draftDateUntil !== dateUntil;
 
   // ── Loading ──
   if (loadingAccounts) {
@@ -286,8 +297,8 @@ function CashflowContent() {
             <input
               type="date"
               className="h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              value={draftDateFrom}
+              onChange={(e) => setDraftDateFrom(e.target.value)}
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -297,10 +308,31 @@ function CashflowContent() {
             <input
               type="date"
               className="h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              value={dateUntil}
-              onChange={(e) => setDateUntil(e.target.value)}
+              value={draftDateUntil}
+              onChange={(e) => setDraftDateUntil(e.target.value)}
             />
           </div>
+          <Button
+            size="sm"
+            onClick={handleApplyFilters}
+            disabled={!hasPendingFilters}
+            className="h-9"
+          >
+            {t("applyFilter")}
+          </Button>
+          {hasPendingFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9"
+              onClick={() => {
+                setDraftDateFrom(dateFrom);
+                setDraftDateUntil(dateUntil);
+              }}
+            >
+              {t("resetFilter")}
+            </Button>
+          )}
         </CardContent>
       </Card>
 

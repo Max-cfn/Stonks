@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiDelete } from "./api";
 import type {
   AccountListResponse,
+  BankListResponse,
   TransactionListResponse,
   CashflowSummaryResponse,
   ConnectResponse,
@@ -14,8 +15,8 @@ import type {
 export const cashflowKeys = {
   all: ["cashflow"] as const,
   accounts: () => [...cashflowKeys.all, "accounts"] as const,
-  transactions: (accountId?: string) =>
-    [...cashflowKeys.all, "transactions", accountId ?? "all"] as const,
+  transactions: (accountId?: string, filters?: TransactionFilters) =>
+    [...cashflowKeys.all, "transactions", accountId ?? "all", JSON.stringify(filters)] as const,
   summary: (period?: string) =>
     [...cashflowKeys.all, "summary", period ?? "all"] as const,
 };
@@ -39,17 +40,20 @@ export interface TransactionFilters {
 }
 
 export function useTransactions(accountId?: string, filters?: TransactionFilters) {
-  const merged = {
-    account_id: accountId,
+  const params: Record<string, string | number | undefined> = {
     ...filters,
   };
+  // Only send account_id when a specific account is selected
+  if (accountId) {
+    params.account_id = accountId;
+  }
 
   return useQuery({
-    queryKey: cashflowKeys.transactions(accountId),
+    queryKey: cashflowKeys.transactions(accountId, filters),
     queryFn: () =>
-      apiGet<TransactionListResponse>("/api/cashflow/transactions", merged),
-    staleTime: 30_000,
-    enabled: !!accountId,
+      apiGet<TransactionListResponse>("/api/cashflow/transactions", params),
+    staleTime: 0,
+    enabled: true,
   });
 }
 
@@ -63,10 +67,20 @@ export function useCashflowSummary(period: "month" | "year" = "month") {
   });
 }
 
+// ── useAvailableBanks ──
+export function useAvailableBanks() {
+  return useQuery({
+    queryKey: [...cashflowKeys.all, "banks"],
+    queryFn: () => apiGet<BankListResponse>("/api/cashflow/banks/available"),
+    staleTime: 5 * 60_000,
+  });
+}
+
 // ── useConnectBank ──
 export function useConnectBank() {
   return useMutation({
-    mutationFn: () => apiPost<ConnectResponse>("/api/cashflow/banks/connect"),
+    mutationFn: (bankId: string) =>
+      apiPost<ConnectResponse>("/api/cashflow/banks/connect", { bank_id: bankId }),
   });
 }
 

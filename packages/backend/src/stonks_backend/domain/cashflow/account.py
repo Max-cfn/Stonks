@@ -45,6 +45,7 @@ class Account:
     user_id: uuid.UUID
     bank_connector: str  # e.g. "enable_banking", "scraping_fallback"
     bank_id: str  # Bank's internal identifier (e.g. Enable Banking bank UUID)
+    bank_name: str = ""  # Human-readable bank name (e.g. "LCL")
     iban: IBAN | None = None
     holder_name: str | None = None
     account_type: AccountType = AccountType.CHECKING

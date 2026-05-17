@@ -74,7 +74,13 @@ class ScrapingFallbackAdapter(BankConnectorPort):
 
     # ── BankConnectorPort Implementation (all stubs) ───────────────
 
-    async def get_authorization_url(self, user_id: UUID, redirect_uri: str) -> str:
+    async def get_authorization_url(
+        self,
+        user_id: UUID,
+        redirect_uri: str,
+        aspsp_name: str | None = None,
+        aspsp_country: str = "FR",
+    ) -> str:
         """Scraping doesn't use OAuth — returns a dummy URL.
 
         Instead, the frontend should show a form for manual credential entry.

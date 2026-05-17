@@ -24,8 +24,19 @@ class BankConnectorPort(ABC):
     """
 
     @abstractmethod
-    async def get_authorization_url(self, user_id: UUID, redirect_uri: str) -> str:
-        """Return the authorization URL the user must visit to authenticate with their bank."""
+    async def get_authorization_url(
+        self,
+        user_id: UUID,
+        redirect_uri: str,
+        aspsp_name: str | None = None,
+        aspsp_country: str = "FR",
+    ) -> str:
+        """Return the authorization URL the user must visit to authenticate with their bank.
+
+        Args:
+            aspsp_name: The bank's ASPSP identifier (e.g. "LCL", "Boursorama").
+            aspsp_country: Two-letter country code (default "FR").
+        """
         ...
 
     @abstractmethod
@@ -114,6 +125,18 @@ class CashflowRepositoryPort(ABC):
         offset: int = 0,
     ) -> list[Transaction]:
         """Fetch paginated transactions for an account, optionally filtered by date range."""
+        ...
+
+    @abstractmethod
+    async def get_transactions_by_user(
+        self,
+        user_id: UUID,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[Transaction]:
+        """Fetch paginated transactions across all active accounts for a user, merged by date."""
         ...
 
     @abstractmethod

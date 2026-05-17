@@ -36,14 +36,14 @@ class SyncTransactions:
         self._connector = bank_connector
         self._repo = cashflow_repo
 
-    async def sync(self, account_id: UUID) -> SyncResult:
+    async def sync(self, account_id: UUID, force: bool = False) -> SyncResult:
         """Synchronize transactions for a given account.
 
         Fetches transactions since last sync (or last 30 days if never synced),
         persists new ones (dedup by bank_tx_id).
 
-        Returns:
-            SyncResult with counts of new and total transactions.
+        When force=True, ignores last_synced_at and fetches without date filters
+        to get all available transactions from the ASPSP.
         """
         account = await self._repo.get_account(account_id)
         if account is None:
@@ -53,10 +53,14 @@ class SyncTransactions:
             raise SyncTransactionsError(f"Cannot sync account with status {account.status}")
 
         # Determine sync window
-        since = account.last_synced_at
-        if since is None:
-            since = datetime.now(UTC) - timedelta(days=30)
-        until = datetime.now(UTC)
+        if force:
+            since = None
+            until = None
+        else:
+            since = account.last_synced_at
+            if since is None:
+                since = datetime.now(UTC) - timedelta(days=30)
+            until = datetime.now(UTC)
 
         # Fetch from bank
         transactions = await self._connector.fetch_transactions(

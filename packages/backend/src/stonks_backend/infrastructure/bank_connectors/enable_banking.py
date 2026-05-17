@@ -177,7 +177,7 @@ class EnableBankingAdapter(BankConnectorPort):
                     "%Y-%m-%dT%H:%M:%SZ"
                 ),
             },
-            "aspsp": {"name": "Nordea", "country": "FI"},
+            "aspsp": {"name": aspsp_name or "LCL", "country": aspsp_country},
             "state": state,
             "redirect_url": redirect_uri,
             "psu_type": "personal",
@@ -338,36 +338,46 @@ class EnableBankingAdapter(BankConnectorPort):
                 logger.warning("Failed to fetch account %s: %s", acc_id, exc)
                 continue
 
+            # IBAN is nested under account_id
             iban = None
-            if iban_str := data.get("iban"):
+            account_id_obj = data.get("account_id", {}) or {}
+            if iban_str := account_id_obj.get("iban"):
                 iban = IBAN.try_parse(iban_str)
 
+            # Currency: "XXX" means unknown → fall back to EUR
+            currency = data.get("currency", "EUR")
+            if currency == "XXX":
+                currency = "EUR"
+
+            # Fetch balances from dedicated endpoint
             current_balance = None
-            balance_data = data.get("balances", [{}])
-            if balance_data and balance_data[0].get("balanceAmount"):
-                ba = balance_data[0]
-                try:
-                    current_balance = Money(
-                        str(ba["balanceAmount"]["amount"]),
-                        ba["balanceAmount"]["currency"],
-                    )
-                except (KeyError, ValueError):
-                    pass
+            try:
+                bal_data = await self._api_get(f"/accounts/{acc_id}/balances")
+            except httpx.HTTPStatusError:
+                bal_data = {}
+
+            for bal in bal_data.get("balances", []):
+                ba = bal.get("balance_amount", {})
+                if ba and ba.get("amount"):
+                    try:
+                        current_balance = Money(
+                            str(ba["amount"]),
+                            ba.get("currency", currency),
+                        )
+                        break  # Take the first balance
+                    except (KeyError, ValueError):
+                        continue
 
             account = Account(
                 id=UUID(data.get("uid", acc_id)),
                 user_id=user_id,
                 bank_connector="enable_banking",
-                bank_id=data.get("bankId", ""),
+                bank_id=data.get("account_servicer") or "",
                 iban=iban,
-                holder_name=data.get("ownerName"),
-                account_type=self._map_account_type(
-                    data.get("accountType", {}).get("type")
-                    if isinstance(data.get("accountType"), dict)
-                    else data.get("accountType")
-                ),
+                holder_name=data.get("name"),
+                account_type=self._map_account_type(data.get("cash_account_type")),
                 account_name=data.get("name") or data.get("product", "Compte"),
-                currency=data.get("currency", "EUR"),
+                currency=currency,
                 current_balance=current_balance,
                 last_synced_at=now,
                 status=AccountStatus.ACTIVE,
@@ -386,17 +396,17 @@ class EnableBankingAdapter(BankConnectorPort):
         """Fetch transactions for a specific account.
 
         Uses GET /accounts/{id}/transactions. Pagination: the 2026 API may
-        use continuation_token — we handle it if present, otherwise single page.
+        use continuation_key — we handle it if present, otherwise single page.
         """
         from urllib.parse import urlencode
 
-        continuation_token: str | None = None
+        continuation_key: str | None = None
         transactions: list[Transaction] = []
 
         while True:
             params: dict[str, str] = {}
-            if continuation_token:
-                params["continuation_token"] = continuation_token
+            if continuation_key:
+                params["continuation_key"] = continuation_key
             if since:
                 params["date_from"] = since.strftime("%Y-%m-%d")
             if until:
@@ -411,9 +421,9 @@ class EnableBankingAdapter(BankConnectorPort):
             for item in data.get("transactions", []):
                 transactions.append(self._parse_transaction(item, account_id))
 
-            # Check for pagination (2026 API may or may not use continuation_token)
-            continuation_token = data.get("continuation_token")
-            if not continuation_token:
+            # Check for pagination (2026 API uses continuation_key)
+            continuation_key = data.get("continuation_key")
+            if not continuation_key:
                 break
 
         return transactions
@@ -440,16 +450,17 @@ class EnableBankingAdapter(BankConnectorPort):
                 continue
 
             for item in data.get("balances", []):
-                bal = item.get("balanceAmount", {})
-                if not bal:
+                # Enable Banking 2026 API: balance_amount (snake_case), not balanceAmount
+                bal = item.get("balance_amount", {}) or {}
+                if not bal or not bal.get("amount"):
                     continue
                 try:
-                    money = Money(str(bal["amount"]), bal["currency"])
+                    money = Money(str(bal["amount"]), bal.get("currency", "EUR"))
                     snapshots.append(
                         BalanceSnapshot(
                             account_id=UUID(acc_id),
                             balance=money,
-                            currency=bal["currency"],
+                            currency=bal.get("currency", "EUR"),
                             timestamp=now,
                             source="psd2",
                         )
@@ -462,29 +473,33 @@ class EnableBankingAdapter(BankConnectorPort):
     # ── Parsers (preserved from original) ──────────────────────────
 
     def _parse_transaction(self, item: dict[str, Any], account_id: UUID) -> Transaction:
-        amount_data = item.get("transactionAmount", {})
-        amount = Money(
-            str(amount_data.get("amount", "0")),
-            amount_data.get("currency", "EUR"),
-        )
-        desc_lines = item.get("remittanceInformationUnstructuredArray", [])
-        description = (
-            " ".join(desc_lines)
-            if desc_lines
-            else (item.get("remittanceInformationUnstructured", ""))
-        )
-        creditor = item.get("creditor", {}) or {}
-        debtor = item.get("debtor", {}) or {}
+        # Enable Banking 2026 API uses snake_case field names
+        amount_data = item.get("transaction_amount", {}) or {}
+        raw_amount = str(amount_data.get("amount", "0"))
+        currency = amount_data.get("currency", "EUR")
+
+        # Credit/debit indicator: CRDT = positive, DBIT = negative
+        # Check at transaction level first, then inside transaction_amount
+        cdi = item.get("credit_debit_indicator") or amount_data.get("credit_debit_indicator")
+        if cdi == "DBIT":
+            raw_amount = f"-{raw_amount.lstrip('-')}"
+
+        amount = Money(raw_amount, currency)
+        desc_lines = item.get("remittance_information", []) or []
+        description = "\n".join(desc_lines) if desc_lines else ""
+
+        creditor = item.get("creditor") or {}
+        debtor = item.get("debtor") or {}
 
         return Transaction(
-            id=TransactionId(item.get("transactionId", "") or TransactionId.generate().value),
+            id=TransactionId(item.get("transaction_id") or TransactionId.generate().value),
             account_id=account_id,
-            bank_tx_id=item.get("entryReference") or item.get("transactionId"),
+            bank_tx_id=item.get("entry_reference") or item.get("transaction_id"),
             amount=amount,
             currency=amount.currency,
             description=description,
-            booking_date=self._parse_date(item.get("bookingDate")),
-            value_date=self._parse_date(item.get("valueDate")),
+            booking_date=self._parse_date(item.get("booking_date")),
+            value_date=self._parse_date(item.get("value_date")),
             status=TransactionStatus.BOOKED,
             source=TransactionSource.PSD2,
             creditor_name=creditor.get("name"),
@@ -499,7 +514,9 @@ class EnableBankingAdapter(BankConnectorPort):
             return AccountType.CHECKING
         mapping = {
             "current": AccountType.CHECKING,
+            "cacc": AccountType.CHECKING,
             "savings": AccountType.SAVINGS,
+            "svgs": AccountType.SAVINGS,
             "creditCard": AccountType.CREDIT_CARD,
             "loan": AccountType.LOAN,
         }

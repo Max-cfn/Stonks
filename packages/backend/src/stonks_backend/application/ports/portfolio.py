@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from stonks_backend.domain.portfolio.holding import Holding
@@ -241,11 +242,46 @@ class PortfolioRepositoryPort(ABC):
         pass
 
 
+class PortfolioConnectorPort(ABC):
+    """Abstract interface for importing portfolio data from brokers/investment platforms.
+
+    Implementations:
+        - ManualEntryAdapter (user enters trades via UI — no-op)
+        - CsvImportAdapter (planned: parse Trade Republic CSV statements)
+        - TradeRepublicApiAdapter (deferred: community API)
+    """
+
+    @abstractmethod
+    async def get_authorization_url(self, user_id: UUID, redirect_uri: str) -> str:
+        """Return an auth URL for the broker, or raise if no OAuth flow exists."""
+        ...
+
+    @abstractmethod
+    async def handle_callback(self, user_id: UUID, code: str) -> list[Holding]:
+        """Exchange authorization code for holdings data."""
+        ...
+
+    @abstractmethod
+    async def import_holdings(
+        self, user_id: UUID, credentials: dict[str, Any] | None = None
+    ) -> list[Holding]:
+        """Import current holdings/positions from the broker."""
+        ...
+
+    @abstractmethod
+    async def import_transactions(
+        self, user_id: UUID, credentials: dict[str, Any] | None = None
+    ) -> list[Trade]:
+        """Import trade history (buy/sell/dividend) from the broker."""
+        ...
+
+
 __all__ = [
     "FxRatePort",
     "NewsDigest",
     "NewsFeedPort",
     "NewsItem",
+    "PortfolioConnectorPort",
     "PortfolioRepositoryPort",
     "PriceAlert",
     "PriceFeedPort",

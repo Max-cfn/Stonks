@@ -23,6 +23,7 @@ from stonks_backend.application.use_cases.cashflow.get_summary import (
 from stonks_backend.application.use_cases.cashflow.sync_transactions import SyncTransactions
 from stonks_backend.domain.user import User
 from stonks_backend.infrastructure.bank_connectors import EnableBankingAdapter
+from stonks_backend.infrastructure.bank_connectors.bank_registry import BankRegistry
 from stonks_backend.infrastructure.config import get_settings
 from stonks_backend.infrastructure.database import get_session
 from stonks_backend.infrastructure.persistence.cashflow_repo import CashflowSqlRepository
@@ -32,8 +33,11 @@ from stonks_backend.interfaces.api.dependencies.auth import get_current_user
 from stonks_backend.interfaces.api.schemas import (
     AccountListResponse,
     AccountResponse,
+    BankListResponse,
+    BankResponse,
     CashflowSummaryResponse,
     CategoryResponse,
+    ConnectBankRequest,
     ConnectResponse,
     ErrorResponse,
     SyncResponse,
@@ -80,7 +84,38 @@ async def get_bank_connector(
     )
 
 
+async def get_bank_registry() -> BankRegistry:
+    """Return the bank registry loaded from banks.json."""
+    return BankRegistry.from_default_path()
+
+
 # ── Bank Connection ───────────────────────────────────────────────
+
+
+@router.get(
+    "/banks/available",
+    response_model=BankListResponse,
+)
+async def list_available_banks(
+    registry: BankRegistry = Depends(get_bank_registry),
+) -> BankListResponse:
+    """Return the list of supported banks available for connection."""
+    banks = registry.list_supported()
+    return BankListResponse(
+        banks=[
+            BankResponse(
+                id=b.id,
+                name=b.name,
+                country=b.country,
+                connector_type=b.connector_type,
+                logo_path=b.logo_path,
+                supported=b.supported,
+                account_types=b.account_types,
+                notes=b.notes,
+            )
+            for b in banks
+        ]
+    )
 
 
 @router.post(
@@ -90,16 +125,20 @@ async def get_bank_connector(
 )
 async def connect_bank(
     request: Request,
+    body: ConnectBankRequest,
     current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
+    registry: BankRegistry = Depends(get_bank_registry),
 ) -> ConnectResponse:
     """Initiate bank connection: returns the URL the user must visit to authorize."""
     settings = get_settings()
     redirect_uri = f"{settings.public_url}/cashflow/banks/callback"
 
-    use_case = ConnectBankAccount(bank_connector, None)  # repo not needed yet
+    use_case = ConnectBankAccount(bank_connector, None, registry)
     auth_url = await use_case.get_authorization_url(
-        user_id=current_user.id, redirect_uri=redirect_uri
+        user_id=current_user.id,
+        redirect_uri=redirect_uri,
+        bank_id=body.bank_id,
     )
     return ConnectResponse(authorization_url=auth_url)
 
@@ -116,6 +155,7 @@ async def bank_callback(
     state: str = Query(..., description="State parameter with encoded user_id"),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
+    registry: BankRegistry = Depends(get_bank_registry),
 ) -> RedirectResponse:
     """Session callback: exchange code for session, fetch and persist accounts.
 
@@ -137,7 +177,7 @@ async def bank_callback(
             url=f"{frontend}/en/dashboard?bank_connect=error&reason=invalid_state"
         )
 
-    use_case = ConnectBankAccount(bank_connector, repo)
+    use_case = ConnectBankAccount(bank_connector, repo, registry)
     try:
         await use_case.handle_callback(
             user_id=user_id,
@@ -198,6 +238,7 @@ async def list_accounts(
                 id=str(a.id),
                 bank_connector=a.bank_connector,
                 bank_id=a.bank_id,
+                bank_name=a.bank_name,
                 iban=a.iban.pretty if a.iban else "N/A",
                 account_name=a.account_name,
                 account_type=a.account_type.value,
@@ -227,11 +268,13 @@ async def list_accounts(
 async def sync_transactions(
     request: Request,
     account_id: UUID,
+    force: bool = Query(False, description="Force full resync from 2020-01-01"),
     current_user: User = Depends(get_current_user),
     bank_connector: EnableBankingAdapter = Depends(get_bank_connector),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> SyncResponse:
-    """Trigger transaction sync for an account. Rate limited: 1/minute/account."""
+    """Trigger transaction sync for an account. Rate limited: 1/minute/account.
+    Use force=true to re-fetch all historical transactions and refresh amounts."""
     # Verify ownership
     account = await repo.get_account(account_id)
     if account is None:
@@ -244,7 +287,7 @@ async def sync_transactions(
 
     use_case = SyncTransactions(bank_connector, repo)
     try:
-        result = await use_case.sync(account_id)
+        result = await use_case.sync(account_id, force=force)
     except Exception as exc:
         logger.error("Sync failed for account %s: %s", account_id, exc)
         raise HTTPException(
@@ -267,7 +310,7 @@ async def sync_transactions(
     responses={401: {"model": ErrorResponse}},
 )
 async def list_transactions(
-    account_id: UUID = Query(..., description="Account UUID"),
+    account_id: UUID | None = Query(None, description="Account UUID (omit for all accounts)"),
     since: str | None = Query(None, description="Start date ISO 8601"),
     until: str | None = Query(None, description="End date ISO 8601"),
     limit: int = Query(200, ge=1, le=1000),
@@ -275,41 +318,61 @@ async def list_transactions(
     current_user: User = Depends(get_current_user),
     repo: CashflowRepositoryPort = Depends(get_cashflow_repo),
 ) -> TransactionListResponse:
-    """List paginated transactions for an account, with optional date filtering."""
-    # Verify ownership
-    account = await repo.get_account(account_id)
-    if account is None:
-        raise HTTPException(status_code=404, detail="Account not found")
-    if account.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-
+    """List paginated transactions for an account, or across all active accounts if no account_id."""
     # Parse dates
     from datetime import datetime as dt
 
     since_dt = dt.fromisoformat(since.replace("Z", "+00:00")) if since else None
     until_dt = dt.fromisoformat(until.replace("Z", "+00:00")) if until else None
 
-    transactions = await repo.get_transactions(
-        account_id=account_id,
-        since=since_dt,
-        until=until_dt,
-        limit=limit,
-        offset=offset,
-    )
+    # Resolve account_name map for multi-account mode
+    account_map: dict[str, str] = {}
+
+    if account_id is not None:
+        # Single-account mode: verify ownership
+        account = await repo.get_account(account_id)
+        if account is None:
+            raise HTTPException(status_code=404, detail="Account not found")
+        if account.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        account_map[str(account.id)] = account.account_name or str(account.id)
+        transactions = await repo.get_transactions(
+            account_id=account_id,
+            since=since_dt,
+            until=until_dt,
+            limit=limit,
+            offset=offset,
+        )
+    else:
+        # Multi-account mode: fetch from all active accounts
+        user_accounts = await repo.get_accounts_by_user(current_user.id)
+        account_map = {str(a.id): a.account_name or str(a.id) for a in user_accounts}
+        transactions = await repo.get_transactions_by_user(
+            user_id=current_user.id,
+            since=since_dt,
+            until=until_dt,
+            limit=limit,
+            offset=offset,
+        )
 
     return TransactionListResponse(
         transactions=[
             TransactionResponse(
                 id=tx.id.value,
                 account_id=str(tx.account_id),
+                account_name=account_map.get(str(tx.account_id)),
                 bank_tx_id=tx.bank_tx_id,
                 amount=str(tx.amount),
                 currency=tx.currency,
                 description=tx.description,
+                transaction_date=tx.booking_date.isoformat()
+                if tx.booking_date
+                else (tx.value_date.isoformat() if tx.value_date else None),
                 booking_date=tx.booking_date.isoformat() if tx.booking_date else None,
                 value_date=tx.value_date.isoformat() if tx.value_date else None,
                 status=tx.status.value,
                 source=tx.source.value,
+                is_expense=tx.amount.is_negative,
                 creditor_name=tx.creditor_name,
                 debtor_name=tx.debtor_name,
                 category_id=str(tx.category_id) if tx.category_id else None,

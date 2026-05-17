@@ -1,0 +1,158 @@
+{
+  "banks": [
+    {
+      "id": "lcl",
+      "name": "LCL",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "LCL",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/lcl.png",
+      "notes": null
+    },
+    {
+      "id": "boursorama",
+      "name": "Boursorama Banque",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "Boursorama",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/boursorama.png",
+      "notes": null
+    },
+    {
+      "id": "societe_generale",
+      "name": "Societe Generale",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "Societe Generale",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/societe-generale.png",
+      "notes": null
+    },
+    {
+      "id": "credit_agricole",
+      "name": "Credit Agricole",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "Credit Agricole",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/credit-agricole.png",
+      "notes": null
+    },
+    {
+      "id": "bnp_paribas",
+      "name": "BNP Paribas",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "BNP Paribas",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/bnp-paribas.png",
+      "notes": null
+    },
+    {
+      "id": "caisse_epargne",
+      "name": "Caisse d'Epargne",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "Caisse d'Epargne",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/caisse-epargne.png",
+      "notes": null
+    },
+    {
+      "id": "fortuneo",
+      "name": "Fortuneo",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "Fortuneo",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/fortuneo.png",
+      "notes": null
+    },
+    {
+      "id": "boursobank",
+      "name": "BoursoBank",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "BoursoBank",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/boursobank.png",
+      "notes": null
+    },
+    {
+      "id": "hello_bank",
+      "name": "Hello Bank!",
+      "country": "FR",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "Hello Bank!",
+        "aspsp_country": "FR"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/hello-bank.png",
+      "notes": null
+    },
+    {
+      "id": "revolut",
+      "name": "Revolut",
+      "country": "GB",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "Revolut",
+        "aspsp_country": "GB"
+      },
+      "supported": true,
+      "account_types": ["checking", "savings"],
+      "logo_path": "/logos/revolut.png",
+      "notes": null
+    },
+    {
+      "id": "trade_republic",
+      "name": "Trade Republic",
+      "country": "DE",
+      "connector_type": "enable_banking",
+      "connector_config": {
+        "aspsp_name": "TradeRepublic",
+        "aspsp_country": "DE"
+      },
+      "supported": false,
+      "account_types": ["checking", "investment"],
+      "logo_path": "/logos/trade-republic.png",
+      "notes": "Compte especes accessible via PSD2. Portefeuille titres en cours d'integration."
+    }
+  ]
+}

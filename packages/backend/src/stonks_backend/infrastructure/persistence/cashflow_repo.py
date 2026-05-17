@@ -75,6 +75,7 @@ class CashflowSqlRepository(CashflowRepositoryPort):
             user_id=account.user_id,
             bank_connector=account.bank_connector,
             bank_id=account.bank_id,
+            bank_name=account.bank_name,
             iban_encrypted=iban_encrypted,
             holder_name_encrypted=holder_encrypted,
             account_type=account.account_type.value,
@@ -90,6 +91,7 @@ class CashflowSqlRepository(CashflowRepositoryPort):
         stmt = stmt.on_conflict_do_update(
             constraint="uq_user_bank_account",
             set_={
+                "bank_name": stmt.excluded.bank_name,
                 "iban_encrypted": stmt.excluded.iban_encrypted,
                 "holder_name_encrypted": stmt.excluded.holder_name_encrypted,
                 "account_type": stmt.excluded.account_type,
@@ -203,6 +205,39 @@ class CashflowSqlRepository(CashflowRepositoryPort):
         """Fetch paginated transactions for an account, optionally filtered by booking_date."""
         stmt = select(CashflowTransactionModel).where(
             CashflowTransactionModel.account_id == account_id
+        )
+        if since is not None:
+            stmt = stmt.where(CashflowTransactionModel.booking_date >= since)
+        if until is not None:
+            stmt = stmt.where(CashflowTransactionModel.booking_date <= until)
+        stmt = stmt.order_by(CashflowTransactionModel.booking_date.desc())
+        stmt = stmt.limit(limit).offset(offset)
+
+        result = await self._session.execute(stmt)
+        return [self._model_to_transaction(m) for m in result.scalars().all()]
+
+    async def get_transactions_by_user(
+        self,
+        user_id: UUID,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[Transaction]:
+        """Fetch paginated transactions across all active accounts for a user, merged by booking_date desc."""
+        # First, get the active account IDs for this user
+        acct_stmt = (
+            select(CashflowAccountModel.id)
+            .where(CashflowAccountModel.user_id == user_id)
+            .where(CashflowAccountModel.status != "disconnected")
+        )
+        acct_result = await self._session.execute(acct_stmt)
+        account_ids = [row[0] for row in acct_result.all()]
+        if not account_ids:
+            return []
+
+        stmt = select(CashflowTransactionModel).where(
+            CashflowTransactionModel.account_id.in_(account_ids)
         )
         if since is not None:
             stmt = stmt.where(CashflowTransactionModel.booking_date >= since)
@@ -358,6 +393,7 @@ class CashflowSqlRepository(CashflowRepositoryPort):
             user_id=m.user_id,
             bank_connector=m.bank_connector,
             bank_id=m.bank_id,
+            bank_name=m.bank_name,
             iban=iban,
             holder_name=holder_name,
             account_type=AccountType(m.account_type),

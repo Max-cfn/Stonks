@@ -38,6 +38,7 @@ class CashflowAccountModel(Base):
     )
     bank_connector: Mapped[str] = mapped_column(String(64), nullable=False)
     bank_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    bank_name: Mapped[str] = mapped_column(String(128), nullable=False, server_default="")
     iban_encrypted: Mapped[str | None] = mapped_column(Text(), nullable=True)
     holder_name_encrypted: Mapped[str | None] = mapped_column(Text(), nullable=True)
     account_type: Mapped[str] = mapped_column(String(32), nullable=False, server_default="checking")

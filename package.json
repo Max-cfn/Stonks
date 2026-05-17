@@ -1,6 +1,6 @@
 {
   "name": "stonks",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Plateforme de finance personnelle pilotée par flotte d'agents IA",
   "private": true,
   "license": "UNLICENSED",

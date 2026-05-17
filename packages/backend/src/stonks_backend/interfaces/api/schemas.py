@@ -45,10 +45,30 @@ class ConnectResponse(BaseModel):
     authorization_url: str
 
 
+class ConnectBankRequest(BaseModel):
+    bank_id: str = Field(..., description="Bank identifier from /banks/available")
+
+
+class BankResponse(BaseModel):
+    id: str
+    name: str
+    country: str
+    connector_type: str
+    logo_path: str = ""
+    supported: bool = True
+    account_types: list[str] | None = None
+    notes: str | None = None
+
+
+class BankListResponse(BaseModel):
+    banks: list[BankResponse]
+
+
 class AccountResponse(BaseModel):
     id: str
     bank_connector: str
     bank_id: str
+    bank_name: str = ""
     iban: str
     account_name: str
     account_type: str
@@ -70,6 +90,7 @@ class SyncResponse(BaseModel):
 class TransactionResponse(BaseModel):
     id: str
     account_id: str
+    account_name: str | None = None
     bank_tx_id: str | None = None
     amount: str
     currency: str

@@ -1,9 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { LogOut, User, Landmark, Bell, CheckCircle2, XCircle, Loader2, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/useAuth";
-import { useAccounts, useConnectBank, useDisconnectBank } from "@/lib/hooks/useCashflow";
+import { useAccounts, useDisconnectBank } from "@/lib/hooks/useCashflow";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
@@ -61,9 +63,10 @@ function SettingsSkeleton() {
 function SettingsContent() {
   const t = useTranslations("settings");
   const c = useTranslations("common");
+  const locale = useLocale();
+  const router = useRouter();
   const { user, isLoading, logout } = useAuth();
   const { data: accountsData, isLoading: loadingAccounts } = useAccounts();
-  const connectBank = useConnectBank();
   const disconnectBank = useDisconnectBank();
 
   // Wait for auth context to resolve before rendering user details
@@ -72,11 +75,7 @@ function SettingsContent() {
   }
 
   const handleConnect = () => {
-    connectBank.mutate(undefined, {
-      onSuccess: (data) => {
-        window.location.href = data.authorization_url;
-      },
-    });
+    router.push(`/${locale}/cashflow/connect`);
   };
 
   const handleDisconnect = (accountId: string) => {
@@ -172,14 +171,9 @@ function SettingsContent() {
             variant="outline"
             size="sm"
             onClick={handleConnect}
-            disabled={connectBank.isPending}
             className="gap-2"
           >
-            {connectBank.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
+            <Plus className="h-4 w-4" />
             {t("addBank")}
           </Button>
         </CardContent>
